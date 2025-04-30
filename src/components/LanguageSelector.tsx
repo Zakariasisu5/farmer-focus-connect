@@ -1,7 +1,7 @@
 
 import React from "react";
 import { useLanguage } from "../contexts/LanguageContext";
-import { Language } from "lucide-react";
+import { Languages } from "lucide-react";
 
 const LanguageSelector: React.FC = () => {
   const { language, setLanguage } = useLanguage();
@@ -16,7 +16,7 @@ const LanguageSelector: React.FC = () => {
   return (
     <div className="language-selector">
       <div className="flex items-center gap-1">
-        <Language size={18} />
+        <Languages size={18} />
         <span className="text-sm font-medium">{language.toUpperCase()}</span>
       </div>
       
