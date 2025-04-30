@@ -2,6 +2,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Link, useNavigate } from "react-router-dom";
 import WeatherCard from "../components/WeatherCard";
 import MarketPriceCard from "../components/MarketPriceCard";
 import NavigationBar from "../components/NavigationBar";
@@ -13,6 +14,7 @@ import { MapPin, Calendar } from "lucide-react";
 const Index: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // Sample data
   const weatherData = [
@@ -104,7 +106,12 @@ const Index: React.FC = () => {
                 region={market.region}
               />
             ))}
-            <Button variant="outline" size="sm" className="w-full mt-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full mt-2"
+              onClick={() => navigate('/market')}
+            >
               {t("priceUpdates")}
             </Button>
           </CardContent>
