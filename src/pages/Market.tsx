@@ -14,28 +14,28 @@ const Market: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [region, setRegion] = useState("all");
 
-  // Sample market data
+  // Enhanced market data with Ghana regions
   const marketData = [
     {
       crop: "Maize",
       price: 2.45,
       unit: "kg",
       change: 0.3,
-      region: "Central Region",
+      region: "Greater Accra",
     },
     {
       crop: "Tomatoes",
       price: 1.75,
       unit: "kg",
       change: -0.5,
-      region: "Eastern District",
+      region: "Ashanti Region",
     },
     {
       crop: "Potatoes",
       price: 3.20,
       unit: "kg",
       change: 1.2,
-      region: "Northern Zone",
+      region: "Northern Region",
     },
     {
       crop: "Rice",
@@ -49,15 +49,85 @@ const Market: React.FC = () => {
       price: 3.75,
       unit: "kg",
       change: 0.5,
-      region: "Southern Province",
+      region: "Western Region",
     },
     {
       crop: "Wheat",
       price: 2.90,
       unit: "kg",
       change: -0.8,
-      region: "Eastern District",
+      region: "Eastern Region",
     },
+    {
+      crop: "Cassava",
+      price: 1.85,
+      unit: "kg",
+      change: 0.7,
+      region: "Volta Region",
+    },
+    {
+      crop: "Plantain",
+      price: 3.45,
+      unit: "bunch",
+      change: 1.1,
+      region: "Upper East Region",
+    },
+    {
+      crop: "Yam",
+      price: 4.25,
+      unit: "tuber",
+      change: -0.4,
+      region: "Upper West Region",
+    },
+    {
+      crop: "Cocoa",
+      price: 8.75,
+      unit: "kg",
+      change: 2.3,
+      region: "Bono Region",
+    },
+    {
+      crop: "Groundnuts",
+      price: 5.60,
+      unit: "kg",
+      change: 0.2,
+      region: "Ahafo Region",
+    },
+    {
+      crop: "Millet",
+      price: 3.10,
+      unit: "kg",
+      change: -0.1,
+      region: "Bono East Region",
+    },
+    {
+      crop: "Sorghum",
+      price: 2.95,
+      unit: "kg",
+      change: 0.4,
+      region: "North East Region",
+    },
+    {
+      crop: "Okra",
+      price: 2.10,
+      unit: "kg",
+      change: 1.5,
+      region: "Oti Region",
+    },
+    {
+      crop: "Palm Oil",
+      price: 6.20,
+      unit: "liter",
+      change: 0.9,
+      region: "Savannah Region",
+    },
+    {
+      crop: "Onions",
+      price: 2.35,
+      unit: "kg",
+      change: -0.3,
+      region: "Western North Region",
+    }
   ];
 
   const filteredData = marketData.filter((item) => {

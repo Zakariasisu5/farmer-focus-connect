@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LanguageSelector from "../components/LanguageSelector";
@@ -10,23 +10,39 @@ import { useLanguage } from "../contexts/LanguageContext";
 const Support: React.FC = () => {
   const { t } = useLanguage();
 
-  // Sample FAQ data
+  // Enhanced FAQ data with more farming-related questions
   const faqData = [
     {
-      question: "When is the best time to plant maize?",
-      answer: "The best time to plant maize is at the beginning of the rainy season when soil temperatures reach around 18°C (65°F) for optimal germination.",
+      question: "When is the best time to plant maize in Ghana?",
+      answer: "In Ghana, the best time to plant maize depends on your region. In the southern parts, planting should be done in March-April for the major season and August-September for the minor season. In northern Ghana, plant in May-June when the rainy season begins.",
     },
     {
       question: "How do I identify tomato blight?",
-      answer: "Tomato blight appears as dark brown spots on leaves that quickly enlarge and turn black. Infected stems develop dark, elongated lesions, and fruits show dark, leathery patches.",
+      answer: "Tomato blight appears as dark brown spots on leaves that quickly enlarge and turn black. Infected stems develop dark, elongated lesions, and fruits show dark, leathery patches. In Ghana's humid conditions, it spreads rapidly during rainy seasons.",
     },
     {
       question: "What are natural methods to control aphids?",
-      answer: "Natural aphid control includes introducing beneficial insects like ladybugs, spraying with neem oil or soap solutions, and planting companion plants such as marigolds or nasturtiums.",
+      answer: "Natural aphid control includes introducing beneficial insects like ladybugs, spraying with neem oil or soap solutions, and planting companion plants such as marigolds or nasturtiums. These methods are particularly effective in Ghana's tropical climate.",
     },
     {
       question: "How often should I rotate crops?",
-      answer: "Crop rotation should ideally occur every growing season, but at minimum practice a 3-4 year rotation cycle to prevent soil-borne diseases and pest buildup.",
+      answer: "Crop rotation should ideally occur every growing season, but at minimum practice a 3-4 year rotation cycle to prevent soil-borne diseases and pest buildup. This is especially important in Ghana to maintain soil fertility and reduce pest pressure.",
+    },
+    {
+      question: "Which fertilizers are best for cassava in Ghana?",
+      answer: "For cassava cultivation in Ghana, NPK fertilizers with ratios like 15-15-15 or 12-12-17 are recommended. Apply approximately 200-400 kg/ha, with application timing 4-8 weeks after planting for optimal yield.",
+    },
+    {
+      question: "How can I improve soil fertility naturally?",
+      answer: "Improve soil fertility naturally by incorporating compost, practicing crop rotation with legumes, using green manures, and applying organic matter like poultry manure. These practices are well-suited to Ghana's agricultural systems and help build long-term soil health.",
+    },
+    {
+      question: "What's the best way to store yams after harvest?",
+      answer: "For yam storage in Ghana, keep them in cool, dry, well-ventilated yam barns or traditional structures raised above ground. Regularly inspect for rot or pest damage. Properly stored yams can last 4-6 months after harvest.",
+    },
+    {
+      question: "How do I manage weeds without chemicals?",
+      answer: "Manage weeds organically by timely cultivation, mulching, hand weeding, and maintaining proper plant spacing. In Ghana, cover cropping with mucuna or other leguminous plants can also effectively suppress weeds while improving soil fertility.",
     },
   ];
 
@@ -51,7 +67,7 @@ const Support: React.FC = () => {
           <TabsContent value="ask" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Ask Our Experts</CardTitle>
+                <CardTitle className="text-lg">Ask Our Farming Experts</CardTitle>
               </CardHeader>
               <CardContent>
                 <QuestionForm />
