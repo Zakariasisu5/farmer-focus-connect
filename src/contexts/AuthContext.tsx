@@ -15,7 +15,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, region?: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -72,7 +72,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  const register = async (name: string, email: string, password: string) => {
+  const register = async (name: string, email: string, password: string, region?: string) => {
     // Simulate API request
     setIsLoading(true);
     
@@ -84,6 +84,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: "user-" + Math.floor(Math.random() * 1000),
         name,
         email,
+        region: region || "Greater Accra", // Use selected region or default
         language: "en",
       };
       

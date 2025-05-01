@@ -2,7 +2,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import WeatherCard from "../components/WeatherCard";
 import MarketPriceCard from "../components/MarketPriceCard";
 import NavigationBar from "../components/NavigationBar";
@@ -35,14 +35,14 @@ const Index: React.FC = () => {
   const marketData = [
     {
       crop: "Maize",
-      price: 2.45,
+      price: 12.45,
       unit: "kg",
       change: 0.3,
       region: "Central Region",
     },
     {
       crop: "Tomatoes",
-      price: 1.75,
+      price: 8.75,
       unit: "kg",
       change: -0.5,
       region: "Eastern District",

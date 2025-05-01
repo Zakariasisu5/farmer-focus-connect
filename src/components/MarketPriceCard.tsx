@@ -30,7 +30,7 @@ const MarketPriceCard: React.FC<MarketPriceProps> = ({
           </div>
           
           <div className="text-right">
-            <div className="text-xl font-bold">${price.toFixed(2)}/{unit}</div>
+            <div className="text-xl font-bold">GH₵{price.toFixed(2)}/{unit}</div>
             
             <div 
               className={`flex items-center gap-1 text-sm ${
