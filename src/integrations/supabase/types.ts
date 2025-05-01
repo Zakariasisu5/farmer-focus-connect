@@ -150,6 +150,36 @@ export type Database = {
           },
         ]
       }
+      market_prices: {
+        Row: {
+          change: number | null
+          crop: string
+          id: string
+          price: number
+          region: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          change?: number | null
+          crop: string
+          id?: string
+          price: number
+          region: string
+          unit: string
+          updated_at?: string
+        }
+        Update: {
+          change?: number | null
+          crop?: string
+          id?: string
+          price?: number
+          region?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -219,6 +249,57 @@ export type Database = {
           unit?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_activities: {
+        Row: {
+          activity_type: string
+          created_at: string
+          details: Json | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      weather_forecasts: {
+        Row: {
+          condition: string
+          humidity: number
+          id: string
+          location: string
+          temperature: number
+          updated_at: string
+        }
+        Insert: {
+          condition: string
+          humidity: number
+          id?: string
+          location: string
+          temperature: number
+          updated_at?: string
+        }
+        Update: {
+          condition?: string
+          humidity?: number
+          id?: string
+          location?: string
+          temperature?: number
+          updated_at?: string
         }
         Relationships: []
       }

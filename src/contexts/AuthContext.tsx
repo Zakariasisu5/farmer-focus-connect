@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface User {
   id: string;
@@ -39,11 +40,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem("farmer-user");
     
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const parsedUser = JSON.parse(storedUser);
+      setUser(parsedUser);
+      
+      // Log user activity on app load
+      if (parsedUser && parsedUser.id) {
+        logUserActivity(parsedUser.id, "app_login");
+      }
     }
     
     setIsLoading(false);
   }, []);
+
+  // Function to log user activities
+  const logUserActivity = async (userId: string, activityType: string, details?: any) => {
+    try {
+      await supabase.from('user_activities').insert({
+        user_id: userId,
+        activity_type: activityType,
+        details: details || {}
+      });
+    } catch (error) {
+      console.error("Failed to log user activity:", error);
+    }
+  };
 
   // Mock login function - in a real app, this would connect to a backend
   const login = async (email: string, password: string) => {
@@ -64,6 +84,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(mockUser);
       localStorage.setItem("farmer-user", JSON.stringify(mockUser));
+      
+      // Log login activity
+      logUserActivity(mockUser.id, "login");
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
@@ -90,6 +113,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(mockUser);
       localStorage.setItem("farmer-user", JSON.stringify(mockUser));
+      
+      // Log registration activity
+      logUserActivity(mockUser.id, "registration", { region: mockUser.region });
     } catch (error) {
       console.error("Registration failed:", error);
       throw error;
@@ -99,6 +125,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const logout = () => {
+    if (user) {
+      // Log logout activity
+      logUserActivity(user.id, "logout");
+    }
+    
     setUser(null);
     localStorage.removeItem("farmer-user");
   };
