@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw, MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -22,22 +22,16 @@ const MarketFilters: React.FC = () => {
 
   return (
     <div className="container px-4 pt-4 pb-2">
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
-        <Input
-          placeholder={t("searchCrops")}
-          className="pl-10"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-
-      <div className="flex items-center gap-2 mb-4">
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold mb-2 flex items-center gap-2">
+          <MapPin className="text-farm-earth" size={18} />
+          {t("selectRegion")}
+        </h2>
         <Select 
           value={region} 
           onValueChange={handleRegionChange}
         >
-          <SelectTrigger className="flex-1">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder={t("selectRegion")} />
           </SelectTrigger>
           <SelectContent>
@@ -49,25 +43,37 @@ const MarketFilters: React.FC = () => {
             ))}
           </SelectContent>
         </Select>
-        
-        <Button 
-          variant="outline" 
-          size="icon" 
-          onClick={refreshPrices}
-          disabled={isLoading}
-          className="shrink-0"
-        >
-          <RefreshCw size={18} className={`${isLoading ? "animate-spin" : ""}`} />
-        </Button>
       </div>
-      
-      <div className="flex justify-between text-xs text-muted-foreground mb-2">
-        <span>
-          {t("lastUpdated")}: {lastUpdated.toLocaleTimeString()}
-        </span>
-        <span>
+
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
+        <Input
+          placeholder={t("searchCrops")}
+          className="pl-10"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-xs text-muted-foreground">
           {filteredData.length} {filteredData.length === 1 ? t("result") : t("results")}
         </span>
+        
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">
+            {t("lastUpdated")}: {lastUpdated.toLocaleTimeString()}
+          </span>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={refreshPrices}
+            disabled={isLoading}
+            className="shrink-0 h-8 w-8"
+          >
+            <RefreshCw size={16} className={`${isLoading ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
     </div>
   );
