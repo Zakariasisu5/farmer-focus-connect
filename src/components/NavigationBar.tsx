@@ -11,7 +11,7 @@ const NavigationBar: React.FC = () => {
   const navItems = [
     { icon: <Home size={24} />, label: t("home"), path: "/" },
     { icon: <Calendar size={24} />, label: t("market"), path: "/market" },
-    { icon: <MessageCircle size={24} />, label: t("support"), path: "/support" },
+    { icon: <MessageCircle size={24} />, label: t("marketplace"), path: "/marketplace" },
     { icon: <Settings size={24} />, label: t("settings"), path: "/settings" },
   ];
 

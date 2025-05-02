@@ -14,6 +14,8 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Market from "./pages/Market";
+import Marketplace from "./pages/Marketplace";
+import PostCrop from "./pages/PostCrop";
 import Support from "./pages/Support";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -47,6 +49,22 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Market />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/marketplace" 
+                element={
+                  <ProtectedRoute>
+                    <Marketplace />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/marketplace/post" 
+                element={
+                  <ProtectedRoute>
+                    <PostCrop />
                   </ProtectedRoute>
                 } 
               />

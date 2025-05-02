@@ -50,6 +50,54 @@ export type Database = {
           },
         ]
       }
+      crop_listings: {
+        Row: {
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          crop_name: string
+          description: string | null
+          id: string
+          is_available: boolean
+          location: string
+          price: number
+          quantity: number
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          crop_name: string
+          description?: string | null
+          id?: string
+          is_available?: boolean
+          location: string
+          price: number
+          quantity: number
+          unit: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          crop_name?: string
+          description?: string | null
+          id?: string
+          is_available?: boolean
+          location?: string
+          price?: number
+          quantity?: number
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       "Egg projection": {
         Row: {
           created_at: string
