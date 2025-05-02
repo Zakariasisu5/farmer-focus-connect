@@ -68,8 +68,9 @@ const PostCrop: React.FC = () => {
     }
 
     try {
-      const { error } = await supabase.from("crop_listings").insert({
-        user_id: user.id,
+      // Create the listing data object, ensuring user_id is a string
+      const listingData = {
+        user_id: user.id.toString(), // Convert to string to avoid UUID parsing issues
         crop_name: data.crop_name,
         quantity: parseFloat(data.quantity),
         unit: data.unit,
@@ -79,9 +80,14 @@ const PostCrop: React.FC = () => {
         contact_phone: data.contact_phone || null,
         contact_email: data.contact_email || null,
         is_available: true,
-      });
+      };
 
-      if (error) throw error;
+      const { error } = await supabase.from("crop_listings").insert(listingData);
+
+      if (error) {
+        console.error("Error details:", error);
+        throw error;
+      }
 
       toast.success(t("cropListingPosted"));
       navigate("/marketplace");
@@ -107,6 +113,7 @@ const PostCrop: React.FC = () => {
             </Button>
             <h1 className="text-xl font-bold">{t("postCropListing")}</h1>
           </div>
+          <p className="text-sm mt-1">{t("shareYourProduceWithBuyers")}</p>
         </div>
       </div>
 
@@ -114,27 +121,69 @@ const PostCrop: React.FC = () => {
       <div className="container px-4 py-6 mx-auto max-w-md">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="crop_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("cropName")}</FormLabel>
-                  <FormControl>
-                    <Input placeholder={t("enterCropName")} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
+            {/* Product Information Section */}
+            <div className="bg-card p-4 rounded-lg border border-border">
+              <h2 className="font-medium text-lg mb-4">{t("productInformation")}</h2>
+              
               <FormField
                 control={form.control}
-                name="quantity"
+                name="crop_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("quantity")}</FormLabel>
+                    <FormLabel>{t("cropName")}</FormLabel>
+                    <FormControl>
+                      <Input placeholder={t("enterCropName")} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("quantity")}</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" step="0.01" placeholder="0.00" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="unit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("unit")}</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t("selectUnit")} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {units.map(unit => (
+                            <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem className="mt-4">
+                    <FormLabel>{t("pricePerUnit")} (₵)</FormLabel>
                     <FormControl>
                       <Input type="number" min="0" step="0.01" placeholder="0.00" {...field} />
                     </FormControl>
@@ -142,22 +191,27 @@ const PostCrop: React.FC = () => {
                   </FormItem>
                 )}
               />
+            </div>
 
+            {/* Location Section */}
+            <div className="bg-card p-4 rounded-lg border border-border">
+              <h2 className="font-medium text-lg mb-4">{t("location")}</h2>
+              
               <FormField
                 control={form.control}
-                name="unit"
+                name="location"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("unit")}</FormLabel>
+                    <FormLabel>{t("region")}</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={t("selectUnit")} />
+                          <SelectValue placeholder={t("selectRegion")} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {units.map(unit => (
-                          <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                        {ghanaRegions.map(region => (
+                          <SelectItem key={region} value={region}>{region}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -167,65 +221,34 @@ const PostCrop: React.FC = () => {
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("pricePerUnit")} (₵)</FormLabel>
-                  <FormControl>
-                    <Input type="number" min="0" step="0.01" placeholder="0.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("location")}</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+            {/* Description Section */}
+            <div className="bg-card p-4 rounded-lg border border-border">
+              <h2 className="font-medium text-lg mb-4">{t("description")}</h2>
+              
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("productDescription")}</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t("selectRegion")} />
-                      </SelectTrigger>
+                      <Textarea 
+                        placeholder={t("describeYourCrop")} 
+                        className="resize-none" 
+                        rows={3} 
+                        {...field} 
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {ghanaRegions.map(region => (
-                        <SelectItem key={region} value={region}>{region}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormDescription>{t("includeQualityAndFreshness")}</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("description")}</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder={t("describeYourCrop")} 
-                      className="resize-none" 
-                      rows={3} 
-                      {...field} 
-                    />
-                  </FormControl>
-                  <FormDescription>{t("descriptionOptional")}</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="space-y-4">
-              <h3 className="font-medium">{t("contactInformation")}</h3>
+            {/* Contact Information Section */}
+            <div className="bg-card p-4 rounded-lg border border-border">
+              <h2 className="font-medium text-lg mb-4">{t("contactInformation")}</h2>
               
               <FormField
                 control={form.control}
@@ -246,7 +269,7 @@ const PostCrop: React.FC = () => {
                 control={form.control}
                 name="contact_email"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="mt-4">
                     <FormLabel>{t("email")}</FormLabel>
                     <FormControl>
                       <Input placeholder={t("enterEmail")} {...field} />
@@ -258,7 +281,7 @@ const PostCrop: React.FC = () => {
               />
             </div>
 
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full bg-farm-green hover:bg-farm-green/90">
               {t("postListing")}
             </Button>
           </form>
