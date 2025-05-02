@@ -68,9 +68,10 @@ const PostCrop: React.FC = () => {
     }
 
     try {
-      // Create the listing data object, ensuring user_id is a string
+      // Create the listing data object, ensuring user_id is properly formatted
+      // Avoid converting user.id to string as it should already be a UUID
       const listingData = {
-        user_id: user.id.toString(), // Convert to string to avoid UUID parsing issues
+        user_id: user.id, // Use the ID directly without conversion
         crop_name: data.crop_name,
         quantity: parseFloat(data.quantity),
         unit: data.unit,
@@ -81,6 +82,9 @@ const PostCrop: React.FC = () => {
         contact_email: data.contact_email || null,
         is_available: true,
       };
+
+      // For debugging
+      console.log("Submitting listing data:", listingData);
 
       const { error } = await supabase.from("crop_listings").insert(listingData);
 
