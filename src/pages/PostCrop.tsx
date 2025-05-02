@@ -2,7 +2,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Crop, CircleDollarSign, Info, MapPin, Phone, Mail } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -68,10 +68,10 @@ const PostCrop: React.FC = () => {
     }
 
     try {
-      // Create the listing data object, ensuring user_id is properly formatted
-      // Avoid converting user.id to string as it should already be a UUID
+      // Create the listing data object
+      // FIXED: Don't try to manipulate the user.id, use it directly as provided by the auth context
       const listingData = {
-        user_id: user.id, // Use the ID directly without conversion
+        user_id: user.id, // Use the ID directly as is
         crop_name: data.crop_name,
         quantity: parseFloat(data.quantity),
         unit: data.unit,
@@ -83,8 +83,10 @@ const PostCrop: React.FC = () => {
         is_available: true,
       };
 
-      // For debugging
+      // Debug log to see what's being submitted
       console.log("Submitting listing data:", listingData);
+      console.log("User ID type:", typeof user.id);
+      console.log("User ID value:", user.id);
 
       const { error } = await supabase.from("crop_listings").insert(listingData);
 
@@ -103,31 +105,34 @@ const PostCrop: React.FC = () => {
 
   return (
     <div className="pb-20 min-h-screen bg-background">
-      {/* Header */}
+      {/* Header with improved styling */}
       <div className="bg-farm-green p-4 text-white shadow-md">
         <div className="container px-4 mx-auto">
           <div className="flex items-center">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="mr-2 text-white" 
+              className="mr-2 text-white hover:bg-farm-green/20" 
               onClick={() => navigate("/marketplace")}
             >
               <ArrowLeft size={20} />
             </Button>
             <h1 className="text-xl font-bold">{t("postCropListing")}</h1>
           </div>
-          <p className="text-sm mt-1">{t("shareYourProduceWithBuyers")}</p>
+          <p className="text-sm mt-1 opacity-90">{t("shareYourProduceWithBuyers")}</p>
         </div>
       </div>
 
-      {/* Form */}
+      {/* Form with visual improvements */}
       <div className="container px-4 py-6 mx-auto max-w-md">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Product Information Section */}
-            <div className="bg-card p-4 rounded-lg border border-border">
-              <h2 className="font-medium text-lg mb-4">{t("productInformation")}</h2>
+            <div className="bg-card p-5 rounded-lg border border-border shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Crop size={18} className="text-farm-green" />
+                <h2 className="font-medium text-lg">{t("productInformation")}</h2>
+              </div>
               
               <FormField
                 control={form.control}
@@ -187,7 +192,10 @@ const PostCrop: React.FC = () => {
                 name="price"
                 render={({ field }) => (
                   <FormItem className="mt-4">
-                    <FormLabel>{t("pricePerUnit")} (₵)</FormLabel>
+                    <FormLabel className="flex items-center gap-1">
+                      <CircleDollarSign size={14} className="text-muted-foreground" />
+                      {t("pricePerUnit")} (₵)
+                    </FormLabel>
                     <FormControl>
                       <Input type="number" min="0" step="0.01" placeholder="0.00" {...field} />
                     </FormControl>
@@ -198,8 +206,11 @@ const PostCrop: React.FC = () => {
             </div>
 
             {/* Location Section */}
-            <div className="bg-card p-4 rounded-lg border border-border">
-              <h2 className="font-medium text-lg mb-4">{t("location")}</h2>
+            <div className="bg-card p-5 rounded-lg border border-border shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin size={18} className="text-farm-green" />
+                <h2 className="font-medium text-lg">{t("location")}</h2>
+              </div>
               
               <FormField
                 control={form.control}
@@ -226,8 +237,11 @@ const PostCrop: React.FC = () => {
             </div>
 
             {/* Description Section */}
-            <div className="bg-card p-4 rounded-lg border border-border">
-              <h2 className="font-medium text-lg mb-4">{t("description")}</h2>
+            <div className="bg-card p-5 rounded-lg border border-border shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Info size={18} className="text-farm-green" />
+                <h2 className="font-medium text-lg">{t("description")}</h2>
+              </div>
               
               <FormField
                 control={form.control}
@@ -243,7 +257,7 @@ const PostCrop: React.FC = () => {
                         {...field} 
                       />
                     </FormControl>
-                    <FormDescription>{t("includeQualityAndFreshness")}</FormDescription>
+                    <FormDescription className="text-xs">{t("includeQualityAndFreshness")}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -251,19 +265,25 @@ const PostCrop: React.FC = () => {
             </div>
 
             {/* Contact Information Section */}
-            <div className="bg-card p-4 rounded-lg border border-border">
-              <h2 className="font-medium text-lg mb-4">{t("contactInformation")}</h2>
+            <div className="bg-card p-5 rounded-lg border border-border shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <Phone size={18} className="text-farm-green" />
+                <h2 className="font-medium text-lg">{t("contactInformation")}</h2>
+              </div>
               
               <FormField
                 control={form.control}
                 name="contact_phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("phoneNumber")}</FormLabel>
+                    <FormLabel className="flex items-center gap-1">
+                      <Phone size={14} className="text-muted-foreground" />
+                      {t("phoneNumber")}
+                    </FormLabel>
                     <FormControl>
                       <Input placeholder={t("enterPhoneNumber")} {...field} />
                     </FormControl>
-                    <FormDescription>{t("phoneOptional")}</FormDescription>
+                    <FormDescription className="text-xs">{t("phoneOptional")}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -274,11 +294,14 @@ const PostCrop: React.FC = () => {
                 name="contact_email"
                 render={({ field }) => (
                   <FormItem className="mt-4">
-                    <FormLabel>{t("email")}</FormLabel>
+                    <FormLabel className="flex items-center gap-1">
+                      <Mail size={14} className="text-muted-foreground" />
+                      {t("email")}
+                    </FormLabel>
                     <FormControl>
                       <Input placeholder={t("enterEmail")} {...field} />
                     </FormControl>
-                    <FormDescription>{t("emailOptional")}</FormDescription>
+                    <FormDescription className="text-xs">{t("emailOptional")}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
