@@ -1,11 +1,12 @@
 
 import React, { useState } from "react";
-import { Phone, Mail, MapPin } from "lucide-react";
+import { Phone, Mail, MapPin, MessageCircle } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface CropListing {
   id: string;
@@ -25,11 +26,13 @@ interface CropListing {
 interface CropListingCardProps {
   listing: CropListing;
   onUpdate?: () => void;
+  onChat?: () => void;
 }
 
-const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) => {
+const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate, onChat }) => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [showContact, setShowContact] = useState(false);
   
   const isOwner = user?.id === listing.user_id;
@@ -41,8 +44,29 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
   });
   
   const handleContactClick = () => {
+    if (!isAuthenticated) {
+      toast.error(t("loginRequired"));
+      navigate("/login");
+      return;
+    }
     setShowContact(true);
     toast.success(t("contactInfoShown"));
+  };
+
+  const handleChatClick = () => {
+    if (!isAuthenticated) {
+      toast.error(t("loginRequired"));
+      navigate("/login");
+      return;
+    }
+    
+    if (onChat) {
+      onChat();
+    } else {
+      navigate(`/chats/${listing.user_id}`);
+    }
+    
+    toast.success(t("startingChat"));
   };
 
   return (
@@ -100,15 +124,23 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
       </CardContent>
       <CardFooter className="bg-card p-4 pt-0">
         {!isOwner ? (
-          !showContact ? (
-            <Button className="w-full" onClick={handleContactClick}>
-              {t("contactSeller")}
+          <div className="grid grid-cols-2 gap-2 w-full">
+            <Button 
+              onClick={handleContactClick} 
+              variant={showContact ? "outline" : "default"}
+              className="w-full"
+            >
+              {showContact ? t("hideContact") : t("viewContact")}
             </Button>
-          ) : (
-            <Button variant="outline" className="w-full" onClick={() => setShowContact(false)}>
-              {t("hideContact")}
+            <Button 
+              onClick={handleChatClick}
+              variant="secondary" 
+              className="w-full"
+            >
+              <MessageCircle size={16} className="mr-1" />
+              {t("chat")}
             </Button>
-          )
+          </div>
         ) : (
           <Button variant="secondary" className="w-full" disabled>
             {t("yourListing")}

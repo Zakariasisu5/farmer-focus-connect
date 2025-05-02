@@ -19,6 +19,8 @@ import PostCrop from "./pages/PostCrop";
 import Support from "./pages/Support";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Chats from "./pages/Chats";
+import ChatDetail from "./pages/ChatDetail";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +67,22 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <PostCrop />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/chats" 
+                element={
+                  <ProtectedRoute>
+                    <Chats />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/chats/:chatId" 
+                element={
+                  <ProtectedRoute>
+                    <ChatDetail />
                   </ProtectedRoute>
                 } 
               />

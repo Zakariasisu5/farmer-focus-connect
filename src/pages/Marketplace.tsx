@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, MapPin, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Search, MapPin, ArrowUp, ArrowDown, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 const Marketplace: React.FC = () => {
   const { t } = useLanguage();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [region, setRegion] = useState("all");
@@ -63,6 +63,26 @@ const Marketplace: React.FC = () => {
           <p className="text-sm mt-1">{t("buyFromFarmers")}</p>
         </div>
       </div>
+
+      {/* Authentication Banner (if not logged in) */}
+      {!isAuthenticated && (
+        <div className="bg-muted p-4 border-b">
+          <div className="container px-4 mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div>
+              <h3 className="font-medium">{t("loginToContact")}</h3>
+              <p className="text-sm text-muted-foreground">{t("loginToContactDesc")}</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate("/register")}>
+                {t("register")}
+              </Button>
+              <Button onClick={() => navigate("/login")}>
+                {t("login")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="container px-4 py-4 mx-auto">
@@ -124,6 +144,7 @@ const Marketplace: React.FC = () => {
           <div className="py-10 text-center text-muted-foreground">{t("loading")}</div>
         ) : filteredListings?.length === 0 ? (
           <div className="py-10 text-center">
+            <ShoppingCart size={48} className="mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">{t("noListingsFound")}</p>
             {isAuthenticated && (
               <Button 
@@ -138,7 +159,12 @@ const Marketplace: React.FC = () => {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredListings?.map((listing) => (
-              <CropListingCard key={listing.id} listing={listing} onUpdate={refetch} />
+              <CropListingCard 
+                key={listing.id} 
+                listing={listing} 
+                onUpdate={refetch} 
+                onChat={() => navigate(`/chats/${listing.user_id}`)}
+              />
             ))}
           </div>
         )}
