@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +13,7 @@ import { toast } from "sonner";
 
 interface Message {
   id: string;
-  sender_id: string;
+  user_id: string;
   content: string;
   created_at: string;
   read: boolean;
@@ -233,7 +232,7 @@ const ChatDetail: React.FC = () => {
           </div>
         ) : (
           messages?.map((message) => {
-            const isCurrentUser = message.sender_id === user?.id;
+            const isCurrentUser = message.user_id === user?.id;
             const messageDate = new Date(message.created_at);
             const formattedTime = format(messageDate, "HH:mm");
             
