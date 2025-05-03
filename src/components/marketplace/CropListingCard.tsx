@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 interface CropListing {
   id: string;
@@ -29,11 +30,12 @@ interface CropListingCardProps {
   onChat?: () => void;
 }
 
-const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate, onChat }) => {
+const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) => {
   const { t } = useLanguage();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [showContact, setShowContact] = useState(false);
+  const [isStartingChat, setIsStartingChat] = useState(false);
   
   const isOwner = user?.id === listing.user_id;
   
@@ -49,24 +51,43 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate, on
       navigate("/login");
       return;
     }
-    setShowContact(true);
-    toast.success(t("contactInfoShown"));
+    setShowContact(prev => !prev);
+    if (!showContact) {
+      toast.success(t("contactInfoShown"));
+    }
   };
 
-  const handleChatClick = () => {
+  const handleChatClick = async () => {
     if (!isAuthenticated) {
       toast.error(t("loginRequired"));
       navigate("/login");
       return;
     }
     
-    if (onChat) {
-      onChat();
-    } else {
-      navigate(`/chats/${listing.user_id}`);
+    if (isOwner) {
+      toast.error(t("cannotChatWithYourself"));
+      return;
     }
     
-    toast.success(t("startingChat"));
+    try {
+      setIsStartingChat(true);
+      
+      // Create or retrieve the conversation using the RPC function
+      const { data, error } = await supabase
+        .rpc('create_conversation', { other_user_id: listing.user_id });
+        
+      if (error) throw error;
+      
+      const conversationId = data;
+      
+      setIsStartingChat(false);
+      toast.success(t("startingChat"));
+      navigate(`/chats/${conversationId}`);
+    } catch (error) {
+      console.error("Error starting chat:", error);
+      toast.error(t("errorStartingChat"));
+      setIsStartingChat(false);
+    }
   };
 
   return (
@@ -136,9 +157,10 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate, on
               onClick={handleChatClick}
               variant="secondary" 
               className="w-full"
+              disabled={isStartingChat}
             >
               <MessageCircle size={16} className="mr-1" />
-              {t("chat")}
+              {isStartingChat ? t("connecting") : t("chat")}
             </Button>
           </div>
         ) : (

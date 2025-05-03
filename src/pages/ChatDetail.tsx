@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Send, User } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Send, User, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -17,7 +17,11 @@ interface Message {
   sender_id: string;
   content: string;
   created_at: string;
-  is_read: boolean;
+  read: boolean;
+}
+
+interface Participant {
+  user_id: string;
 }
 
 const ChatDetail: React.FC = () => {
@@ -27,47 +31,124 @@ const ChatDetail: React.FC = () => {
   const navigate = useNavigate();
   const [newMessage, setNewMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
   
-  // Mock chat data for demo
-  const chatInfo = {
-    id: chatId,
-    other_user_id: "user-2",
-    other_user_name: "Farmer John"
-  };
+  // Fetch conversation participants to get the other user's info
+  const { data: chatInfo, isLoading: loadingParticipants } = useQuery({
+    queryKey: ["chatParticipants", chatId],
+    queryFn: async () => {
+      try {
+        if (!user || !chatId) throw new Error("Missing user or chat ID");
+        
+        const { data: participants, error } = await supabase
+          .from('conversation_participants')
+          .select('user_id')
+          .eq('conversation_id', chatId);
+          
+        if (error) throw error;
+        
+        // Find the other participant (not the current user)
+        const otherParticipant = participants.find(p => p.user_id !== user.id);
+        
+        if (!otherParticipant) {
+          throw new Error("Could not find chat participant");
+        }
+        
+        // Mark all messages as read since the user is viewing this conversation
+        await supabase.rpc('mark_messages_as_read', { conv_id: chatId });
+        
+        return {
+          id: chatId,
+          other_user_id: otherParticipant.user_id,
+          other_user_name: `User ${otherParticipant.user_id.slice(0, 5)}` // Default name
+        };
+      } catch (error) {
+        console.error("Error fetching chat info:", error);
+        toast.error(t("errorLoadingChat"));
+        return null;
+      }
+    },
+    enabled: !!user && !!chatId && !!isAuthenticated
+  });
   
   // Fetch messages for this chat
-  const { data: messages, isLoading, refetch } = useQuery({
+  const { data: messages, isLoading: loadingMessages } = useQuery({
     queryKey: ["chatMessages", chatId],
     queryFn: async () => {
-      // In a real app, you'd fetch real messages from your database
-      // For now, we'll return some mock messages
-      const mockMessages: Message[] = [
-        {
-          id: "msg1",
-          sender_id: "user-2",
-          content: "Hello, I'm interested in your maize. Is it still available?",
-          created_at: new Date(Date.now() - 1000 * 60 * 60).toISOString(),
-          is_read: true
-        },
-        {
-          id: "msg2",
-          sender_id: user?.id || "",
-          content: "Yes, it's still available. How much would you like?",
-          created_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-          is_read: true
-        },
-        {
-          id: "msg3",
-          sender_id: "user-2",
-          content: "I need about 50kg. What's your best price?",
-          created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-          is_read: true
-        }
-      ];
+      try {
+        if (!chatId) return [];
+        
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('conversation_id', chatId)
+          .order('created_at', { ascending: true });
+          
+        if (error) throw error;
+        
+        return data;
+      } catch (error) {
+        console.error("Error fetching messages:", error);
+        toast.error(t("errorLoadingMessages"));
+        return [];
+      }
+    },
+    enabled: !!chatId && !!chatInfo
+  });
+  
+  // Send message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: async (messageContent: string) => {
+      if (!user || !chatId) throw new Error("Missing user or chat ID");
       
-      return mockMessages;
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: chatId,
+          user_id: user.id,
+          content: messageContent
+        })
+        .select();
+        
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch messages
+      queryClient.invalidateQueries({ queryKey: ["chatMessages", chatId] });
+    },
+    onError: (error) => {
+      console.error("Error sending message:", error);
+      toast.error(t("errorSendingMessage"));
     }
   });
+  
+  // Set up realtime subscription for new messages
+  useEffect(() => {
+    if (!chatId) return;
+    
+    const channel = supabase
+      .channel('chat-changes')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `conversation_id=eq.${chatId}`
+      }, (payload) => {
+        // Refetch messages when a new one is inserted
+        queryClient.invalidateQueries({ queryKey: ["chatMessages", chatId] });
+        
+        // Mark as read if from another user
+        if (payload.new.user_id !== user?.id) {
+          supabase.rpc('mark_messages_as_read', { conv_id: chatId });
+        }
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [chatId, queryClient, user?.id]);
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -84,24 +165,22 @@ const ChatDetail: React.FC = () => {
     const messageToSend = newMessage;
     setNewMessage("");
     
-    // In a real app, you'd insert the message into your database
-    // For now we'll just simulate adding it to our local state
-    const newMsg = {
-      id: `msg-${Date.now()}`,
-      sender_id: user.id,
-      content: messageToSend,
-      created_at: new Date().toISOString(),
-      is_read: false
-    };
-    
-    // Optimistically update UI
-    refetch();
-    
-    toast.success(t("messageSent"));
+    try {
+      await sendMessageMutation.mutateAsync(messageToSend);
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
   };
+  
+  const isLoading = loadingParticipants || loadingMessages;
   
   if (!isAuthenticated) {
     navigate("/login");
+    return null;
+  }
+  
+  if (!chatId || !user) {
+    navigate("/chats");
     return null;
   }
   
@@ -118,26 +197,39 @@ const ChatDetail: React.FC = () => {
           <ArrowLeft size={20} />
         </Button>
         
-        <Avatar className="h-8 w-8 mr-2">
-          <AvatarFallback className="bg-primary/30 text-white text-sm">
-            {chatInfo.other_user_name?.charAt(0) || "U"}
-          </AvatarFallback>
-        </Avatar>
-        
-        <div className="flex-1">
-          <h1 className="text-base font-medium">
-            {chatInfo.other_user_name || "User"}
-          </h1>
-        </div>
+        {isLoading ? (
+          <div className="flex items-center">
+            <div className="h-8 w-8 rounded-full bg-primary/30 flex items-center justify-center animate-pulse"></div>
+            <div className="w-24 h-5 bg-primary/30 animate-pulse ml-2 rounded"></div>
+          </div>
+        ) : (
+          <>
+            <Avatar className="h-8 w-8 mr-2">
+              <AvatarFallback className="bg-primary/30 text-white text-sm">
+                {chatInfo?.other_user_name?.charAt(0) || "U"}
+              </AvatarFallback>
+            </Avatar>
+            
+            <div className="flex-1">
+              <h1 className="text-base font-medium">
+                {chatInfo?.other_user_name || t("user")}
+              </h1>
+            </div>
+          </>
+        )}
       </div>
       
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {isLoading ? (
-          <div className="py-10 text-center text-muted-foreground">{t("loading")}</div>
+          <div className="py-10 text-center flex flex-col items-center">
+            <Loader2 size={32} className="animate-spin text-farm-green mb-2" />
+            <p className="text-muted-foreground">{t("loadingMessages")}</p>
+          </div>
         ) : messages?.length === 0 ? (
           <div className="py-10 text-center">
             <p className="text-muted-foreground">{t("noMessages")}</p>
+            <p className="text-sm mt-2">{t("sendFirstMessage")}</p>
           </div>
         ) : (
           messages?.map((message) => {
@@ -179,14 +271,19 @@ const ChatDetail: React.FC = () => {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           className="flex-1"
+          disabled={sendMessageMutation.isPending}
         />
         <Button 
           type="submit"
-          disabled={!newMessage.trim()}
+          disabled={!newMessage.trim() || sendMessageMutation.isPending}
           size="icon"
           className="shrink-0"
         >
-          <Send size={18} />
+          {sendMessageMutation.isPending ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Send size={18} />
+          )}
         </Button>
       </form>
     </div>

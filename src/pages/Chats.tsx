@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,10 +9,10 @@ import NavigationBar from "@/components/NavigationBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { MessageSquare, User, Search } from "lucide-react";
+import { MessageSquare, User, Search, Loader2 } from "lucide-react";
 import ChatListItem from "@/components/chat/ChatListItem";
 
-interface Chat {
+interface Conversation {
   id: string;
   created_at: string;
   last_message?: string;
@@ -28,37 +28,84 @@ const Chats: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch user's chats
-  const { data: chats, isLoading, refetch } = useQuery({
-    queryKey: ["userChats", user?.id],
+  // Fetch user's conversations
+  const { data: conversations, isLoading, refetch } = useQuery({
+    queryKey: ["userConversations", user?.id],
     queryFn: async () => {
       try {
         if (!user) return [];
         
-        // Note: This is a simplified implementation. In a real app, you'd need to create a proper chats table
-        // and fetch actual chat data. For now, we'll just fetch users who have crop listings
-        const { data, error } = await supabase
-          .from("crop_listings")
-          .select("user_id")
-          .not("user_id", "eq", user.id)
-          .limit(10);
+        // Get conversations where the user is a participant
+        const { data: participantsData, error: participantsError } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .eq('user_id', user.id);
           
-        if (error) throw error;
+        if (participantsError) throw participantsError;
+        if (!participantsData.length) return [];
         
-        // Transform the data into chat-like objects
-        const mockChats = data?.map((item, index) => ({
-          id: `chat-${index}`,
-          created_at: new Date().toISOString(),
-          last_message: "Interested in your crops",
-          last_message_time: new Date().toISOString(),
-          other_user_id: item.user_id,
-          other_user_name: `Farmer ${index + 1}`,
-          unread_count: Math.floor(Math.random() * 3) // Random unread count for demo
-        })) || [];
+        const conversationIds = participantsData.map(p => p.conversation_id);
         
-        return mockChats;
+        // Get all conversation participants for these conversations
+        const { data: allParticipants, error: allParticipantsError } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id, user_id')
+          .in('conversation_id', conversationIds);
+          
+        if (allParticipantsError) throw allParticipantsError;
+        
+        // Get unread message counts
+        const { data: unreadCounts, error: unreadError } = await supabase
+          .rpc('get_unread_message_count');
+          
+        if (unreadError) throw unreadError;
+        
+        // Get the last message for each conversation
+        const { data: lastMessages, error: lastMessagesError } = await supabase
+          .from('messages')
+          .select('conversation_id, content, created_at')
+          .in('conversation_id', conversationIds)
+          .order('created_at', { ascending: false });
+          
+        if (lastMessagesError) throw lastMessagesError;
+        
+        // Build conversation objects
+        const conversationsMap = new Map();
+        
+        allParticipants.forEach(participant => {
+          if (participant.user_id !== user.id) {
+            if (!conversationsMap.has(participant.conversation_id)) {
+              conversationsMap.set(participant.conversation_id, {
+                id: participant.conversation_id,
+                other_user_id: participant.user_id,
+                created_at: new Date().toISOString(),
+                other_user_name: `User ${participant.user_id.slice(0, 5)}`, // Default name
+                unread_count: 0
+              });
+            }
+          }
+        });
+        
+        // Add unread counts
+        unreadCounts?.forEach(item => {
+          const conversation = conversationsMap.get(item.conversation_id);
+          if (conversation) {
+            conversation.unread_count = Number(item.count);
+          }
+        });
+        
+        // Add last messages
+        lastMessages?.forEach(msg => {
+          const conversation = conversationsMap.get(msg.conversation_id);
+          if (conversation && (!conversation.last_message_time || new Date(msg.created_at) > new Date(conversation.last_message_time))) {
+            conversation.last_message = msg.content;
+            conversation.last_message_time = msg.created_at;
+          }
+        });
+        
+        return Array.from(conversationsMap.values());
       } catch (error) {
-        console.error("Error fetching chats:", error);
+        console.error("Error fetching conversations:", error);
         toast.error(t("errorFetchingChats"));
         return [];
       }
@@ -66,9 +113,9 @@ const Chats: React.FC = () => {
     enabled: !!isAuthenticated && !!user?.id
   });
 
-  // Filter chats based on search term
-  const filteredChats = chats?.filter(chat => 
-    chat.other_user_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  // Filter conversations based on search term
+  const filteredConversations = conversations?.filter(conversation => 
+    conversation.other_user_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (!isAuthenticated) {
@@ -113,8 +160,11 @@ const Chats: React.FC = () => {
 
         {/* Chat List */}
         {isLoading ? (
-          <div className="py-10 text-center text-muted-foreground">{t("loading")}</div>
-        ) : filteredChats?.length === 0 ? (
+          <div className="py-10 text-center flex flex-col items-center">
+            <Loader2 size={32} className="animate-spin text-farm-green mb-2" />
+            <p className="text-muted-foreground">{t("loadingChats")}</p>
+          </div>
+        ) : filteredConversations?.length === 0 ? (
           <div className="py-10 text-center">
             <User size={48} className="mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">{t("noChatsFound")}</p>
@@ -128,11 +178,11 @@ const Chats: React.FC = () => {
           </div>
         ) : (
           <div className="divide-y">
-            {filteredChats?.map((chat) => (
+            {filteredConversations?.map((conversation) => (
               <ChatListItem 
-                key={chat.id} 
-                chat={chat} 
-                onClick={() => navigate(`/chats/${chat.id}`)} 
+                key={conversation.id} 
+                chat={conversation} 
+                onClick={() => navigate(`/chats/${conversation.id}`)} 
               />
             ))}
           </div>
