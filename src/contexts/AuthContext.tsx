@@ -43,18 +43,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const parsedUser = JSON.parse(storedUser);
       setUser(parsedUser);
       
-      // Log user activity on app load
+      // Log user activity but handle string IDs
       if (parsedUser && parsedUser.id) {
-        logUserActivity(parsedUser.id, "app_login");
+        logUserActivity(parsedUser.id, "app_login").catch(err => {
+          console.error("Failed to log activity:", err);
+        });
       }
     }
     
     setIsLoading(false);
   }, []);
 
-  // Function to log user activities
+  // Function to log user activities - modified for string IDs
   const logUserActivity = async (userId: string, activityType: string, details?: any) => {
     try {
+      // Direct insert without RPC function to avoid UUID issues
       await supabase.from('user_activities').insert({
         user_id: userId,
         activity_type: activityType,
@@ -86,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("farmer-user", JSON.stringify(mockUser));
       
       // Log login activity
-      logUserActivity(mockUser.id, "login");
+      await logUserActivity(mockUser.id, "login");
     } catch (error) {
       console.error("Login failed:", error);
       throw error;
@@ -115,7 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("farmer-user", JSON.stringify(mockUser));
       
       // Log registration activity
-      logUserActivity(mockUser.id, "registration", { region: mockUser.region });
+      await logUserActivity(mockUser.id, "registration", { region: mockUser.region });
     } catch (error) {
       console.error("Registration failed:", error);
       throw error;
@@ -127,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     if (user) {
       // Log logout activity
-      logUserActivity(user.id, "logout");
+      logUserActivity(user.id, "logout").catch(console.error);
     }
     
     setUser(null);

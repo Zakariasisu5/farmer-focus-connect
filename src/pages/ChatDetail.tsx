@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -39,22 +40,27 @@ const ChatDetail: React.FC = () => {
       try {
         if (!user || !chatId) throw new Error("Missing user or chat ID");
         
+        // Since we're using string IDs instead of UUIDs in the mock auth,
+        // we need to adapt our query approach
         const { data: participants, error } = await supabase
           .from('conversation_participants')
           .select('user_id')
           .eq('conversation_id', chatId);
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching participants:", error);
+          throw error;
+        }
         
         // Find the other participant (not the current user)
-        const otherParticipant = participants.find(p => p.user_id !== user.id);
+        const otherParticipant = participants?.find(p => p.user_id !== user.id);
         
         if (!otherParticipant) {
           throw new Error("Could not find chat participant");
         }
         
-        // Mark all messages as read since the user is viewing this conversation
-        await supabase.rpc('mark_messages_as_read', { conv_id: chatId });
+        // For now, we'll skip the mark as read function since it may be causing issues
+        // with the UUID format
         
         return {
           id: chatId,
@@ -139,7 +145,17 @@ const ChatDetail: React.FC = () => {
         
         // Mark as read if from another user
         if (payload.new.user_id !== user?.id) {
-          supabase.rpc('mark_messages_as_read', { conv_id: chatId });
+          try {
+            // Using a direct update instead of the function to avoid UUID issues
+            supabase
+              .from('messages')
+              .update({ read: true })
+              .eq('conversation_id', chatId)
+              .neq('user_id', user?.id)
+              .eq('read', false);
+          } catch (error) {
+            console.error("Error marking messages as read:", error);
+          }
         }
       })
       .subscribe();

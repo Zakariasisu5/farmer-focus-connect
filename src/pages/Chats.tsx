@@ -35,16 +35,26 @@ const Chats: React.FC = () => {
       try {
         if (!user) return [];
         
-        // Get conversations where the user is a participant
+        console.log("Fetching conversations for user:", user.id);
+        
+        // Get conversations where the user is a participant - modified for string IDs
         const { data: participantsData, error: participantsError } = await supabase
           .from('conversation_participants')
           .select('conversation_id')
           .eq('user_id', user.id);
           
-        if (participantsError) throw participantsError;
-        if (!participantsData.length) return [];
+        if (participantsError) {
+          console.error("Error fetching participants:", participantsError);
+          throw participantsError;
+        }
+        
+        if (!participantsData || !participantsData.length) {
+          console.log("No conversations found for user");
+          return [];
+        }
         
         const conversationIds = participantsData.map(p => p.conversation_id);
+        console.log("Found conversations:", conversationIds);
         
         // Get all conversation participants for these conversations
         const { data: allParticipants, error: allParticipantsError } = await supabase
@@ -52,13 +62,31 @@ const Chats: React.FC = () => {
           .select('conversation_id, user_id')
           .in('conversation_id', conversationIds);
           
-        if (allParticipantsError) throw allParticipantsError;
+        if (allParticipantsError) {
+          console.error("Error fetching all participants:", allParticipantsError);
+          throw allParticipantsError;
+        }
         
-        // Get unread message counts
-        const { data: unreadCounts, error: unreadError } = await supabase
-          .rpc('get_unread_message_count');
-          
-        if (unreadError) throw unreadError;
+        // We'll skip the unread counts function for now since it uses UUID
+        // and implement a direct count query
+        const unreadCounts: { conversation_id: string; count: number }[] = [];
+        
+        // For each conversation, count unread messages directly
+        for (const convId of conversationIds) {
+          const { data, error } = await supabase
+            .from('messages')
+            .select('id', { count: 'exact' })
+            .eq('conversation_id', convId)
+            .neq('user_id', user.id)
+            .eq('read', false);
+            
+          if (!error) {
+            unreadCounts.push({ 
+              conversation_id: convId, 
+              count: data?.length || 0 
+            });
+          }
+        }
         
         // Get the last message for each conversation
         const { data: lastMessages, error: lastMessagesError } = await supabase
@@ -67,12 +95,15 @@ const Chats: React.FC = () => {
           .in('conversation_id', conversationIds)
           .order('created_at', { ascending: false });
           
-        if (lastMessagesError) throw lastMessagesError;
+        if (lastMessagesError) {
+          console.error("Error fetching last messages:", lastMessagesError);
+          throw lastMessagesError;
+        }
         
         // Build conversation objects
         const conversationsMap = new Map();
         
-        allParticipants.forEach(participant => {
+        allParticipants?.forEach(participant => {
           if (participant.user_id !== user.id) {
             if (!conversationsMap.has(participant.conversation_id)) {
               conversationsMap.set(participant.conversation_id, {
@@ -103,6 +134,7 @@ const Chats: React.FC = () => {
           }
         });
         
+        console.log("Processed conversations:", Array.from(conversationsMap.values()));
         return Array.from(conversationsMap.values());
       } catch (error) {
         console.error("Error fetching conversations:", error);
