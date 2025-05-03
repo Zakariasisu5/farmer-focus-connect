@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface User {
   id: string;
@@ -40,14 +41,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem("farmer-user");
     
     if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      
-      // Log user activity but handle string IDs
-      if (parsedUser && parsedUser.id) {
-        logUserActivity(parsedUser.id, "app_login").catch(err => {
-          console.error("Failed to log activity:", err);
-        });
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        
+        // Log user activity but handle string IDs
+        if (parsedUser && parsedUser.id) {
+          logUserActivity(parsedUser.id, "app_login").catch(err => {
+            console.error("Failed to log activity:", err);
+          });
+        }
+      } catch (error) {
+        console.error("Failed to parse user from localStorage:", error);
+        localStorage.removeItem("farmer-user");
       }
     }
     
@@ -87,11 +93,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(mockUser);
       localStorage.setItem("farmer-user", JSON.stringify(mockUser));
+      toast.success("Login successful!");
       
       // Log login activity
       await logUserActivity(mockUser.id, "login");
     } catch (error) {
       console.error("Login failed:", error);
+      toast.error("Login failed. Please try again.");
       throw error;
     } finally {
       setIsLoading(false);
@@ -116,11 +124,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setUser(mockUser);
       localStorage.setItem("farmer-user", JSON.stringify(mockUser));
+      toast.success("Registration successful!");
       
       // Log registration activity
       await logUserActivity(mockUser.id, "registration", { region: mockUser.region });
     } catch (error) {
       console.error("Registration failed:", error);
+      toast.error("Registration failed. Please try again.");
       throw error;
     } finally {
       setIsLoading(false);
@@ -131,6 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       // Log logout activity
       logUserActivity(user.id, "logout").catch(console.error);
+      toast.success("Logged out successfully");
     }
     
     setUser(null);

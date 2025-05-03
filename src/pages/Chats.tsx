@@ -37,7 +37,7 @@ const Chats: React.FC = () => {
         
         console.log("Fetching conversations for user:", user.id);
         
-        // Get conversations where the user is a participant - modified for string IDs
+        // Get conversations where the user is a participant
         const { data: participantsData, error: participantsError } = await supabase
           .from('conversation_participants')
           .select('conversation_id')
@@ -67,11 +67,8 @@ const Chats: React.FC = () => {
           throw allParticipantsError;
         }
         
-        // We'll skip the unread counts function for now since it uses UUID
-        // and implement a direct count query
-        const unreadCounts: { conversation_id: string; count: number }[] = [];
-        
         // For each conversation, count unread messages directly
+        const unreadCounts = [];
         for (const convId of conversationIds) {
           const { data, error } = await supabase
             .from('messages')
@@ -91,7 +88,7 @@ const Chats: React.FC = () => {
         // Get the last message for each conversation
         const { data: lastMessages, error: lastMessagesError } = await supabase
           .from('messages')
-          .select('conversation_id, content, created_at')
+          .select('conversation_id, content, created_at, user_id')
           .in('conversation_id', conversationIds)
           .order('created_at', { ascending: false });
           
@@ -149,6 +146,27 @@ const Chats: React.FC = () => {
   const filteredConversations = conversations?.filter(conversation => 
     conversation.other_user_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Set up realtime subscription for new messages
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const channel = supabase
+      .channel('chat-updates')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages'
+      }, () => {
+        // Refetch conversations when a new message is inserted
+        refetch();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch, user?.id]);
 
   if (!isAuthenticated) {
     return (

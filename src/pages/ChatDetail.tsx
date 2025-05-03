@@ -40,8 +40,7 @@ const ChatDetail: React.FC = () => {
       try {
         if (!user || !chatId) throw new Error("Missing user or chat ID");
         
-        // Since we're using string IDs instead of UUIDs in the mock auth,
-        // we need to adapt our query approach
+        // Get conversation participants
         const { data: participants, error } = await supabase
           .from('conversation_participants')
           .select('user_id')
@@ -58,9 +57,6 @@ const ChatDetail: React.FC = () => {
         if (!otherParticipant) {
           throw new Error("Could not find chat participant");
         }
-        
-        // For now, we'll skip the mark as read function since it may be causing issues
-        // with the UUID format
         
         return {
           id: chatId,
