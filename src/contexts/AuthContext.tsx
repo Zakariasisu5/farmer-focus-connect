@@ -45,7 +45,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const parsedUser = JSON.parse(storedUser);
         setUser(parsedUser);
         
-        // Log user activity but handle string IDs
         if (parsedUser && parsedUser.id) {
           logUserActivity(parsedUser.id, "app_login").catch(err => {
             console.error("Failed to log activity:", err);
@@ -63,7 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Function to generate a UUID v4 from a string ID for Supabase compatibility
   const generateUuidFromString = (str: string): string => {
     // This creates a deterministic UUID v4-like string based on the input string
-    // For real UUID format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx where y is 8, 9, A, or B
     const hashCode = (s: string) => {
       let h = 0;
       for (let i = 0; i < s.length; i++) {
@@ -90,7 +88,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Convert string ID to UUID-like format for Supabase
       const uuidUserId = generateUuidFromString(userId);
       
-      // Direct insert without RPC function to avoid UUID issues
       await supabase.from('user_activities').insert({
         user_id: uuidUserId,
         activity_type: activityType,
@@ -101,14 +98,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Mock login function - in a real app, this would connect to a backend
+  // Login function
   const login = async (email: string, password: string) => {
-    // Simulate API request
     setIsLoading(true);
     
     try {
-      // Mock successful login
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const mockUser: User = {
         id: "user-1",
@@ -122,7 +117,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("farmer-user", JSON.stringify(mockUser));
       toast.success("Login successful!");
       
-      // Log login activity
       await logUserActivity(mockUser.id, "login");
     } catch (error) {
       console.error("Login failed:", error);
@@ -134,18 +128,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const register = async (name: string, email: string, password: string, region?: string) => {
-    // Simulate API request
     setIsLoading(true);
     
     try {
-      // Mock successful registration
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const mockUser: User = {
         id: "user-" + Math.floor(Math.random() * 1000),
         name,
         email,
-        region: region || "Greater Accra", // Use selected region or default
+        region: region || "Greater Accra",
         language: "en",
       };
       
@@ -153,7 +145,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem("farmer-user", JSON.stringify(mockUser));
       toast.success("Registration successful!");
       
-      // Log registration activity
       await logUserActivity(mockUser.id, "registration", { region: mockUser.region });
     } catch (error) {
       console.error("Registration failed:", error);
@@ -166,7 +157,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const logout = () => {
     if (user) {
-      // Log logout activity
       logUserActivity(user.id, "logout").catch(console.error);
       toast.success("Logged out successfully");
     }

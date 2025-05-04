@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Calendar, MapPin } from "lucide-react";
 import WeatherCard from "../components/WeatherCard";
 import MarketPriceCard from "../components/MarketPriceCard";
 import NavigationBar from "../components/NavigationBar";
@@ -13,7 +13,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { useWeather } from "@/hooks/useWeather";
 import { useMarket } from "@/contexts/MarketContext";
 import { MarketProvider } from "@/contexts/MarketContext";
-import { MapPin, Calendar } from "lucide-react";
 
 const Index: React.FC = () => {
   const { t } = useLanguage();
@@ -38,7 +37,7 @@ const Index: React.FC = () => {
             <div>
               <h1 className="text-xl font-bold">Farmer Focus Connect</h1>
               {user && (
-                <div className="flex items-center text-sm mt-1 gap-1 text-white/80">
+                <div className="flex items-center text-sm mt-1 gap-1 text-white/90">
                   <MapPin size={14} />
                   <span>{user.region || "Central Region"}</span>
                 </div>
@@ -51,7 +50,7 @@ const Index: React.FC = () => {
         {/* Main Content */}
         <div className="container px-4 py-6 space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
               <Calendar className="text-farm-earth" />
               {t("weatherForecast")}
             </h2>
@@ -92,7 +91,7 @@ const Index: React.FC = () => {
             )}
           </div>
 
-          <MarketPricesCard navigate={navigate} />
+          <MarketPricesSection navigate={navigate} />
         </div>
 
         {/* Bottom Navigation */}
@@ -102,8 +101,8 @@ const Index: React.FC = () => {
   );
 };
 
-// Extract the Market Prices section into a separate component that uses the useMarket hook
-const MarketPricesCard: React.FC<{ navigate: (path: string) => void }> = ({ navigate }) => {
+// Extract the Market Prices section into a separate component
+const MarketPricesSection: React.FC<{ navigate: (path: string) => void }> = ({ navigate }) => {
   const { t } = useLanguage();
   const { filteredData: marketData, refreshPrices, isLoading: marketLoading } = useMarket();
 
@@ -172,7 +171,7 @@ const MarketPricesCard: React.FC<{ navigate: (path: string) => void }> = ({ navi
           className="w-full mt-2"
           onClick={() => navigate('/market')}
         >
-          {t("priceUpdates")}
+          {t("viewAllPrices")}
         </Button>
       </CardContent>
     </Card>
