@@ -60,12 +60,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   }, []);
 
-  // Function to log user activities - modified for string IDs
+  // Function to generate a UUID v4 from a string ID for Supabase compatibility
+  const generateUuidFromString = (str: string): string => {
+    // This creates a deterministic UUID v4-like string based on the input string
+    // For real UUID format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx where y is 8, 9, A, or B
+    const hashCode = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) {
+        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+      }
+      return h >>> 0;
+    };
+    
+    const hash = hashCode(str);
+    const parts = [
+      hash.toString(16).padStart(8, '0'),
+      (hash >>> 8).toString(16).padStart(4, '0'),
+      ((hash >>> 16) & 0x0fff | 0x4000).toString(16),
+      ((hash >>> 24) & 0x3fff | 0x8000).toString(16),
+      (hashCode(str + 'salt')).toString(16).padStart(12, '0')
+    ];
+    
+    return parts.join('-');
+  };
+
+  // Function to log user activities - modified for UUID compatibility
   const logUserActivity = async (userId: string, activityType: string, details?: any) => {
     try {
+      // Convert string ID to UUID-like format for Supabase
+      const uuidUserId = generateUuidFromString(userId);
+      
       // Direct insert without RPC function to avoid UUID issues
       await supabase.from('user_activities').insert({
-        user_id: userId,
+        user_id: uuidUserId,
         activity_type: activityType,
         details: details || {}
       });

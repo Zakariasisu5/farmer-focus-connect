@@ -44,6 +44,29 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
     month: "short",
     day: "numeric"
   });
+
+  // Function to generate a UUID v4 from a string ID for Supabase compatibility
+  const generateUuidFromString = (str: string): string => {
+    // This creates a deterministic UUID v4-like string based on the input string
+    const hashCode = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) {
+        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+      }
+      return h >>> 0;
+    };
+    
+    const hash = hashCode(str);
+    const parts = [
+      hash.toString(16).padStart(8, '0'),
+      (hash >>> 8).toString(16).padStart(4, '0'),
+      ((hash >>> 16) & 0x0fff | 0x4000).toString(16),
+      ((hash >>> 24) & 0x3fff | 0x8000).toString(16),
+      (hashCode(str + 'salt')).toString(16).padStart(12, '0')
+    ];
+    
+    return parts.join('-');
+  };
   
   const handleContactClick = () => {
     if (!isAuthenticated) {
@@ -72,27 +95,49 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
     try {
       setIsStartingChat(true);
       
+      // Convert string IDs to UUID format
+      const currentUserUuid = generateUuidFromString(user!.id);
+      const listingOwnerUuid = generateUuidFromString(listing.user_id);
+      
+      console.log("Starting chat between:", {
+        currentUser: user!.id,
+        currentUserUuid,
+        listingOwner: listing.user_id,
+        listingOwnerUuid
+      });
+      
       // Check if there's an existing conversation between these users first
       const { data: existingConversations, error: fetchError } = await supabase
         .from('conversation_participants')
         .select('conversation_id, user_id')
-        .eq('user_id', user.id);
+        .eq('user_id', currentUserUuid);
       
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error("Error fetching conversations:", fetchError);
+        throw fetchError;
+      }
       
       let conversationId = null;
       
       if (existingConversations && existingConversations.length > 0) {
+        console.log("Found existing conversations:", existingConversations);
+        
         // For each conversation the current user is in, check if the listing owner is also in it
         for (const conv of existingConversations) {
           const { data: otherParticipant, error: participantError } = await supabase
             .from('conversation_participants')
             .select('user_id')
             .eq('conversation_id', conv.conversation_id)
-            .eq('user_id', listing.user_id)
+            .eq('user_id', listingOwnerUuid)
             .single();
           
-          if (!participantError && otherParticipant) {
+          if (participantError) {
+            console.log("Error or no match when checking participant:", participantError);
+            continue;
+          }
+          
+          if (otherParticipant) {
+            console.log("Found existing conversation with both users:", conv.conversation_id);
             // Found a conversation with both users
             conversationId = conv.conversation_id;
             break;
@@ -102,23 +147,42 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
       
       // If no existing conversation, create a new one
       if (!conversationId) {
+        console.log("Creating new conversation between users");
+        
         // Create new conversation
         const { data: newConversation, error: conversationError } = await supabase
           .from('conversations')
           .insert({})
           .select();
           
-        if (conversationError) throw conversationError;
+        if (conversationError) {
+          console.error("Error creating conversation:", conversationError);
+          throw conversationError;
+        }
+        
+        if (!newConversation || newConversation.length === 0) {
+          throw new Error("Failed to create conversation");
+        }
         
         conversationId = newConversation[0].id;
+        console.log("Created new conversation:", conversationId);
         
         // Add both users as participants
-        await supabase
+        const participantsToAdd = [
+          { conversation_id: conversationId, user_id: currentUserUuid },
+          { conversation_id: conversationId, user_id: listingOwnerUuid }
+        ];
+        
+        console.log("Adding participants:", participantsToAdd);
+        
+        const { error: participantError } = await supabase
           .from('conversation_participants')
-          .insert([
-            { conversation_id: conversationId, user_id: user.id },
-            { conversation_id: conversationId, user_id: listing.user_id }
-          ]);
+          .insert(participantsToAdd);
+          
+        if (participantError) {
+          console.error("Error adding participants:", participantError);
+          throw participantError;
+        }
       }
       
       setIsStartingChat(false);

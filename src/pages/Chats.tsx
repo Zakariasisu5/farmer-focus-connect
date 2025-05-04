@@ -1,18 +1,19 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { MessageSquare, PenSquare, Search } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import NavigationBar from "@/components/NavigationBar";
+import ChatListItem from "@/components/chat/ChatListItem";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import NavigationBar from "@/components/NavigationBar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
-import { MessageSquare, User, Search, Loader2 } from "lucide-react";
-import ChatListItem from "@/components/chat/ChatListItem";
+import { supabase } from "@/integrations/supabase/client";
 
-interface Conversation {
+interface Chat {
   id: string;
   created_at: string;
   last_message?: string;
@@ -24,221 +25,265 @@ interface Conversation {
 
 const Chats: React.FC = () => {
   const { t } = useLanguage();
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch user's conversations
-  const { data: conversations, isLoading, refetch } = useQuery({
-    queryKey: ["userConversations", user?.id],
+  // Function to generate a UUID v4 from a string ID for Supabase compatibility
+  const generateUuidFromString = (str: string): string => {
+    // This creates a deterministic UUID v4-like string based on the input string
+    const hashCode = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) {
+        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+      }
+      return h >>> 0;
+    };
+    
+    const hash = hashCode(str);
+    const parts = [
+      hash.toString(16).padStart(8, '0'),
+      (hash >>> 8).toString(16).padStart(4, '0'),
+      ((hash >>> 16) & 0x0fff | 0x4000).toString(16),
+      ((hash >>> 24) & 0x3fff | 0x8000).toString(16),
+      (hashCode(str + 'salt')).toString(16).padStart(12, '0')
+    ];
+    
+    return parts.join('-');
+  };
+
+  // Fetch user's chats
+  const { 
+    data: chats, 
+    isLoading,
+    refetch
+  } = useQuery({
+    queryKey: ["chats", user?.id],
     queryFn: async () => {
+      if (!user) return [];
+      
       try {
-        if (!user) return [];
+        // Convert string user ID to UUID format for Supabase
+        const uuidUserId = generateUuidFromString(user.id);
+        console.log("Fetching chats for user:", uuidUserId);
         
-        console.log("Fetching conversations for user:", user.id);
-        
-        // Get conversations where the user is a participant
-        const { data: participantsData, error: participantsError } = await supabase
+        // Get all conversations the user participates in
+        const { data: userConversations, error: convsError } = await supabase
           .from('conversation_participants')
           .select('conversation_id')
-          .eq('user_id', user.id);
-          
-        if (participantsError) {
-          console.error("Error fetching participants:", participantsError);
-          throw participantsError;
+          .eq('user_id', uuidUserId);
+
+        if (convsError) {
+          console.error("Error fetching conversations:", convsError);
+          throw convsError;
         }
-        
-        if (!participantsData || !participantsData.length) {
-          console.log("No conversations found for user");
+
+        console.log("User conversations:", userConversations);
+        if (!userConversations || userConversations.length === 0) {
           return [];
         }
-        
-        const conversationIds = participantsData.map(p => p.conversation_id);
-        console.log("Found conversations:", conversationIds);
-        
-        // Get all conversation participants for these conversations
-        const { data: allParticipants, error: allParticipantsError } = await supabase
-          .from('conversation_participants')
-          .select('conversation_id, user_id')
-          .in('conversation_id', conversationIds);
-          
-        if (allParticipantsError) {
-          console.error("Error fetching all participants:", allParticipantsError);
-          throw allParticipantsError;
-        }
-        
-        // For each conversation, count unread messages directly
-        const unreadCounts = [];
-        for (const convId of conversationIds) {
-          const { data, error } = await supabase
-            .from('messages')
-            .select('id', { count: 'exact' })
+
+        // Extract conversation IDs
+        const conversationIds = userConversations.map(c => c.conversation_id);
+        console.log("Conversation IDs:", conversationIds);
+
+        // For each conversation, find the other participant
+        const chatPromises = conversationIds.map(async (convId) => {
+          // Get other participants
+          const { data: participants, error: participantsError } = await supabase
+            .from('conversation_participants')
+            .select('user_id')
             .eq('conversation_id', convId)
-            .neq('user_id', user.id)
-            .eq('read', false);
-            
-          if (!error) {
-            unreadCounts.push({ 
-              conversation_id: convId, 
-              count: data?.length || 0 
-            });
+            .neq('user_id', uuidUserId);
+
+          if (participantsError) {
+            console.error("Error fetching participants:", participantsError);
+            throw participantsError;
           }
-        }
-        
-        // Get the last message for each conversation
-        const { data: lastMessages, error: lastMessagesError } = await supabase
-          .from('messages')
-          .select('conversation_id, content, created_at, user_id')
-          .in('conversation_id', conversationIds)
-          .order('created_at', { ascending: false });
+
+          if (!participants || participants.length === 0) {
+            console.log("No other participants found for conversation:", convId);
+            return null;
+          }
+
+          const otherUserId = participants[0].user_id;
+          console.log("Other user ID:", otherUserId);
           
-        if (lastMessagesError) {
-          console.error("Error fetching last messages:", lastMessagesError);
-          throw lastMessagesError;
-        }
-        
-        // Build conversation objects
-        const conversationsMap = new Map();
-        
-        allParticipants?.forEach(participant => {
-          if (participant.user_id !== user.id) {
-            if (!conversationsMap.has(participant.conversation_id)) {
-              conversationsMap.set(participant.conversation_id, {
-                id: participant.conversation_id,
-                other_user_id: participant.user_id,
-                created_at: new Date().toISOString(),
-                other_user_name: `User ${participant.user_id.slice(0, 5)}`, // Default name
-                unread_count: 0
-              });
+          // Get conversation details
+          const { data: conversation, error: conversationError } = await supabase
+            .from('conversations')
+            .select('created_at')
+            .eq('id', convId)
+            .single();
+
+          if (conversationError) {
+            console.error("Error fetching conversation:", conversationError);
+            throw conversationError;
+          }
+
+          // Get latest message
+          const { data: latestMessage, error: messageError } = await supabase
+            .from('messages')
+            .select('content, created_at, user_id')
+            .eq('conversation_id', convId)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          // Count unread messages
+          const { data: unreadCount, error: unreadError } = await supabase
+            .rpc('get_unread_message_count');
+
+          if (unreadError) {
+            console.error("Error fetching unread count:", unreadError);
+          }
+
+          let unreadMessages = 0;
+          if (unreadCount) {
+            const conversationUnread = unreadCount.find(c => c.conversation_id === convId);
+            if (conversationUnread) {
+              unreadMessages = conversationUnread.count;
             }
           }
+
+          // Map the "other user ID" back to a string ID
+          // In a real app with authentication, you'd fetch user profiles
+          // For our mock app, we'll use a placeholder name
+          
+          // For the mock app, we'll derive a user name from the UUID
+          const shortId = otherUserId.substring(0, 6);
+          const mockName = `Farmer ${shortId}`;
+
+          return {
+            id: convId,
+            created_at: conversation.created_at,
+            last_message: latestMessage?.content || null,
+            last_message_time: latestMessage?.created_at || conversation.created_at,
+            other_user_id: otherUserId,
+            other_user_name: mockName,
+            unread_count: unreadMessages
+          };
         });
+
+        // Execute all promises and filter out null results
+        const results = await Promise.all(chatPromises);
+        const validChats = results.filter(chat => chat !== null) as Chat[];
         
-        // Add unread counts
-        unreadCounts?.forEach(item => {
-          const conversation = conversationsMap.get(item.conversation_id);
-          if (conversation) {
-            conversation.unread_count = Number(item.count);
-          }
+        // Sort by latest message time
+        return validChats.sort((a, b) => {
+          const timeA = a.last_message_time || a.created_at;
+          const timeB = b.last_message_time || b.created_at;
+          return new Date(timeB).getTime() - new Date(timeA).getTime();
         });
-        
-        // Add last messages
-        lastMessages?.forEach(msg => {
-          const conversation = conversationsMap.get(msg.conversation_id);
-          if (conversation && (!conversation.last_message_time || new Date(msg.created_at) > new Date(conversation.last_message_time))) {
-            conversation.last_message = msg.content;
-            conversation.last_message_time = msg.created_at;
-          }
-        });
-        
-        console.log("Processed conversations:", Array.from(conversationsMap.values()));
-        return Array.from(conversationsMap.values());
       } catch (error) {
-        console.error("Error fetching conversations:", error);
+        console.error("Error fetching chats:", error);
         toast.error(t("errorFetchingChats"));
         return [];
       }
     },
-    enabled: !!isAuthenticated && !!user?.id
+    enabled: !!user
   });
 
-  // Filter conversations based on search term
-  const filteredConversations = conversations?.filter(conversation => 
-    conversation.other_user_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Set up realtime subscription for new messages
+  // Listen for new messages using Supabase realtime
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user) return;
     
+    const uuidUserId = generateUuidFromString(user.id);
+    
+    // Subscribe to message events for all conversations
     const channel = supabase
-      .channel('chat-updates')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages'
-      }, () => {
-        // Refetch conversations when a new message is inserted
-        refetch();
-      })
+      .channel('chats-channel')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          console.log('New message received:', payload);
+          // Refetch chats to update the UI
+          refetch();
+        }
+      )
       .subscribe();
-      
+    
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch, user?.id]);
+  }, [user, refetch]);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="container px-4 py-8 mx-auto">
-          <div className="text-center py-10">
-            <MessageSquare size={48} className="mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-xl font-bold mb-2">{t("loginToChat")}</h2>
-            <p className="text-muted-foreground mb-6">{t("chatLoginDescription")}</p>
-            <Button onClick={() => navigate("/login")}>
-              {t("login")}
-            </Button>
-          </div>
-        </div>
-        <NavigationBar />
-      </div>
-    );
-  }
+  // Filter chats based on search
+  const filteredChats = searchTerm.trim() === "" 
+    ? chats 
+    : chats?.filter(chat => 
+        chat.other_user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        chat.last_message?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="pb-20 min-h-screen bg-background">
       {/* Header */}
       <div className="bg-farm-green p-4 text-white shadow-md">
         <div className="container px-4 mx-auto">
           <h1 className="text-xl font-bold">{t("chats")}</h1>
-          <p className="text-sm mt-1">{t("chatWithSellers")}</p>
+          <p className="text-sm mt-1">{t("connectWithFarmersAndBuyers")}</p>
         </div>
       </div>
-
+      
       {/* Search */}
-      <div className="container px-4 py-4 mx-auto">
-        <div className="relative mb-4">
+      <div className="container mx-auto px-4 pt-4 pb-2">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={18} />
           <Input
-            placeholder={t("searchChats")}
             className="pl-10"
+            placeholder={t("searchChats")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-
-        {/* Chat List */}
-        {isLoading ? (
-          <div className="py-10 text-center flex flex-col items-center">
-            <Loader2 size={32} className="animate-spin text-farm-green mb-2" />
-            <p className="text-muted-foreground">{t("loadingChats")}</p>
-          </div>
-        ) : filteredConversations?.length === 0 ? (
-          <div className="py-10 text-center">
-            <User size={48} className="mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">{t("noChatsFound")}</p>
-            <Button 
-              onClick={() => navigate("/marketplace")} 
-              variant="outline" 
-              className="mt-4"
-            >
-              {t("browseMarketplace")}
-            </Button>
-          </div>
-        ) : (
-          <div className="divide-y">
-            {filteredConversations?.map((conversation) => (
-              <ChatListItem 
-                key={conversation.id} 
-                chat={conversation} 
-                onClick={() => navigate(`/chats/${conversation.id}`)} 
-              />
-            ))}
-          </div>
-        )}
       </div>
-
+      
+      {/* No chats state */}
+      {!isLoading && (!chats || chats.length === 0) && (
+        <div className="flex flex-col items-center justify-center p-8 mt-8 text-center">
+          <MessageSquare size={64} className="text-muted-foreground mb-4" />
+          <h2 className="text-xl font-medium mb-2">{t("noChatsYet")}</h2>
+          <p className="text-muted-foreground mb-6 max-w-xs">
+            {t("noChatsDescription")}
+          </p>
+          <Button onClick={() => navigate('/marketplace')}>
+            <PenSquare size={16} className="mr-2" />
+            {t("browseMarketplace")}
+          </Button>
+        </div>
+      )}
+      
+      {/* Loading state */}
+      {isLoading && (
+        <div className="container mx-auto px-4 divide-y">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="py-4 flex items-center">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div className="ml-3 space-y-2 flex-1">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-3 w-5/6" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Chat list */}
+      {!isLoading && filteredChats && filteredChats.length > 0 && (
+        <div className="container mx-auto px-4 divide-y">
+          {filteredChats.map(chat => (
+            <ChatListItem 
+              key={chat.id}
+              chat={chat}
+              onClick={() => navigate(`/chats/${chat.id}`)}
+            />
+          ))}
+        </div>
+      )}
+      
+      {/* Navigation bar */}
       <NavigationBar />
     </div>
   );

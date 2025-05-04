@@ -59,6 +59,31 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [marketData, setMarketData] = useState<MarketItem[]>([]);
 
+  // Function to generate a UUID v4 from a string ID for Supabase compatibility
+  const generateUuidFromString = (str: string): string => {
+    if (!str) return "";
+    
+    // This creates a deterministic UUID v4-like string based on the input string
+    const hashCode = (s: string) => {
+      let h = 0;
+      for (let i = 0; i < s.length; i++) {
+        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
+      }
+      return h >>> 0;
+    };
+    
+    const hash = hashCode(str);
+    const parts = [
+      hash.toString(16).padStart(8, '0'),
+      (hash >>> 8).toString(16).padStart(4, '0'),
+      ((hash >>> 16) & 0x0fff | 0x4000).toString(16),
+      ((hash >>> 24) & 0x3fff | 0x8000).toString(16),
+      (hashCode(str + 'salt')).toString(16).padStart(12, '0')
+    ];
+    
+    return parts.join('-');
+  };
+
   // Initial data fetch on component mount
   useEffect(() => {
     loadMarketPrices();
@@ -102,8 +127,11 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!user) return;
     
     try {
+      // Convert string ID to UUID format
+      const uuidUserId = generateUuidFromString(user.id);
+      
       await supabase.from('user_activities').insert({
-        user_id: user.id,
+        user_id: uuidUserId,
         activity_type: activityType,
         details: details || {}
       });
