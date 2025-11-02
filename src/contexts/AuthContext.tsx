@@ -1,174 +1,177 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { User, Session } from '@supabase/supabase-js';
 
-interface User {
+interface UserProfile {
   id: string;
   name: string;
   email: string;
   phone?: string;
-  region?: string;
-  language: string;
 }
 
 interface AuthContextType {
   user: User | null;
+  session: Session | null;
+  profile: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, region?: string) => Promise<void>;
-  logout: () => void;
+  register: (name: string, email: string, password: string, phone?: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  session: null,
+  profile: null,
   isAuthenticated: false,
   isLoading: true,
   login: async () => {},
   register: async () => {},
-  logout: () => {},
+  logout: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is stored in local storage
-    const storedUser = localStorage.getItem("farmer-user");
-    
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
         
-        if (parsedUser && parsedUser.id) {
-          logUserActivity(parsedUser.id, "app_login").catch(err => {
-            console.error("Failed to log activity:", err);
-          });
+        // Fetch profile when user is authenticated
+        if (session?.user) {
+          setTimeout(() => {
+            fetchUserProfile(session.user.id);
+          }, 0);
+        } else {
+          setProfile(null);
         }
-      } catch (error) {
-        console.error("Failed to parse user from localStorage:", error);
-        localStorage.removeItem("farmer-user");
       }
-    }
-    
-    setIsLoading(false);
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserProfile(session.user.id);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Function to generate a UUID v4 from a string ID for Supabase compatibility
-  const generateUuidFromString = (str: string): string => {
-    // This creates a deterministic UUID v4-like string based on the input string
-    const hashCode = (s: string) => {
-      let h = 0;
-      for (let i = 0; i < s.length; i++) {
-        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
-      }
-      return h >>> 0;
-    };
-    
-    const hash = hashCode(str);
-    const parts = [
-      hash.toString(16).padStart(8, '0'),
-      (hash >>> 8).toString(16).padStart(4, '0'),
-      ((hash >>> 16) & 0x0fff | 0x4000).toString(16),
-      ((hash >>> 24) & 0x3fff | 0x8000).toString(16),
-      (hashCode(str + 'salt')).toString(16).padStart(12, '0')
-    ];
-    
-    return parts.join('-');
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
   };
 
-  // Function to log user activities - modified for UUID compatibility
   const logUserActivity = async (userId: string, activityType: string, details?: any) => {
     try {
-      // Convert string ID to UUID-like format for Supabase
-      const uuidUserId = generateUuidFromString(userId);
-      
       await supabase.from('user_activities').insert({
-        user_id: uuidUserId,
+        user_id: userId,
         activity_type: activityType,
-        details: details || {}
+        activity_details: details,
       });
     } catch (error) {
-      console.error("Failed to log user activity:", error);
+      console.error('Failed to log user activity:', error);
     }
   };
 
-  // Login function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
-    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const mockUser: User = {
-        id: "user-1",
-        name: "Test Farmer",
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        region: "Central Region",
-        language: "en",
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem("farmer-user", JSON.stringify(mockUser));
-      toast.success("Login successful!");
-      
-      await logUserActivity(mockUser.id, "login");
+        password,
+      });
+
+      if (error) throw error;
+
+      toast.success('Logged in successfully!');
     } catch (error) {
-      console.error("Login failed:", error);
-      toast.error("Login failed. Please try again.");
+      const err = error instanceof Error ? error : new Error('Login failed');
+      toast.error(err.message);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
-  
-  const register = async (name: string, email: string, password: string, region?: string) => {
+
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    phone?: string
+  ) => {
     setIsLoading(true);
-    
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const redirectUrl = `${window.location.origin}/`;
       
-      const mockUser: User = {
-        id: "user-" + Math.floor(Math.random() * 1000),
-        name,
+      const { error } = await supabase.auth.signUp({
         email,
-        region: region || "Greater Accra",
-        language: "en",
-      };
-      
-      setUser(mockUser);
-      localStorage.setItem("farmer-user", JSON.stringify(mockUser));
-      toast.success("Registration successful!");
-      
-      await logUserActivity(mockUser.id, "registration", { region: mockUser.region });
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            name,
+            phone,
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      toast.success('Registered successfully!');
     } catch (error) {
-      console.error("Registration failed:", error);
-      toast.error("Registration failed. Please try again.");
+      const err = error instanceof Error ? error : new Error('Registration failed');
+      toast.error(err.message);
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
-  
-  const logout = () => {
-    if (user) {
-      logUserActivity(user.id, "logout").catch(console.error);
-      toast.success("Logged out successfully");
+
+  const logout = async () => {
+    try {
+      if (user) {
+        await logUserActivity(user.id, 'logout', { email: user.email });
+      }
+      
+      await supabase.auth.signOut();
+      toast.success('Logged out successfully!');
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast.error('Failed to log out');
     }
-    
-    setUser(null);
-    localStorage.removeItem("farmer-user");
   };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        session,
+        profile,
         isAuthenticated: !!user,
         isLoading,
         login,
