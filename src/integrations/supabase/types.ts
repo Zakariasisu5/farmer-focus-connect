@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      community_posts: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string | null
+          id: string
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversation_participants: {
         Row: {
           conversation_id: string
@@ -109,6 +139,39 @@ export type Database = {
         }
         Relationships: []
       }
+      market_prices: {
+        Row: {
+          change: number | null
+          created_at: string | null
+          crop: string
+          id: string
+          price: number
+          region: string
+          unit: string
+          updated_at: string | null
+        }
+        Insert: {
+          change?: number | null
+          created_at?: string | null
+          crop: string
+          id?: string
+          price: number
+          region: string
+          unit: string
+          updated_at?: string | null
+        }
+        Update: {
+          change?: number | null
+          created_at?: string | null
+          crop?: string
+          id?: string
+          price?: number
+          region?: string
+          unit?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           content: string
@@ -195,12 +258,45 @@ export type Database = {
         }
         Relationships: []
       }
+      weather_forecasts: {
+        Row: {
+          condition: string
+          created_at: string | null
+          forecast_date: string
+          humidity: number | null
+          id: string
+          location: string
+          temperature: number
+          updated_at: string | null
+        }
+        Insert: {
+          condition: string
+          created_at?: string | null
+          forecast_date: string
+          humidity?: number | null
+          id?: string
+          location: string
+          temperature: number
+          updated_at?: string | null
+        }
+        Update: {
+          condition?: string
+          created_at?: string | null
+          forecast_date?: string
+          humidity?: number | null
+          id?: string
+          location?: string
+          temperature?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_unread_message_count: { Args: { p_user_id: string }; Returns: number }
     }
     Enums: {
       [_ in never]: never
