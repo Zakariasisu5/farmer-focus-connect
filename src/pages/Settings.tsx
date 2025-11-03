@@ -13,7 +13,7 @@ import { Bell, Smartphone, Wifi } from "lucide-react";
 
 const Settings: React.FC = () => {
   const { t } = useLanguage();
-  const { user, logout } = useAuth();
+  const { profile, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -41,15 +41,15 @@ const Settings: React.FC = () => {
           <CardContent className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="font-medium">Name</span>
-              <span>{user?.name || "Guest User"}</span>
+              <span>{profile?.name || "Guest User"}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="font-medium">Email</span>
-              <span>{user?.email || "Not set"}</span>
+              <span>{profile?.email || "Not set"}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="font-medium">Region</span>
-              <span>{user?.region || "Central Region"}</span>
+              <span>{profile?.region || "Central Region"}</span>
             </div>
           </CardContent>
         </Card>

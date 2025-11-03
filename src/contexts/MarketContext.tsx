@@ -52,7 +52,7 @@ const MarketContext = createContext<MarketContextType | undefined>(undefined);
 
 export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [region, setRegion] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
@@ -91,10 +91,10 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   // Set default region based on user's saved preference if they're logged in
   useEffect(() => {
-    if (user?.region && ghanaRegions.includes(user.region)) {
-      setRegion(user.region);
+    if (profile?.region && ghanaRegions.includes(profile.region)) {
+      setRegion(profile.region);
     }
-  }, [user]);
+  }, [profile]);
   
   // Function to load market prices from database
   const loadMarketPrices = async () => {

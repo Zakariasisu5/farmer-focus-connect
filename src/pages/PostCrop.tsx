@@ -45,29 +45,6 @@ const PostCrop: React.FC = () => {
   // Common units for agricultural products
   const units = ["kg", "bag", "crate", "box", "ton", "piece", "dozen", "bundle"];
 
-  // Function to generate a UUID v4 from a string ID for Supabase compatibility
-  const generateUuidFromString = (str: string): string => {
-    // This creates a deterministic UUID v4-like string based on the input string
-    const hashCode = (s: string) => {
-      let h = 0;
-      for (let i = 0; i < s.length; i++) {
-        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
-      }
-      return h >>> 0;
-    };
-    
-    const hash = hashCode(str);
-    const parts = [
-      hash.toString(16).padStart(8, '0'),
-      (hash >>> 8).toString(16).padStart(4, '0'),
-      ((hash >>> 16) & 0x0fff | 0x4000).toString(16),
-      ((hash >>> 24) & 0x3fff | 0x8000).toString(16),
-      (hashCode(str + 'salt')).toString(16).padStart(12, '0')
-    ];
-    
-    return parts.join('-');
-  };
-
   // Initialize the form
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -90,32 +67,19 @@ const PostCrop: React.FC = () => {
     }
 
     try {
-      console.log("Submitting with user:", user);
-      
-      // Convert the string user ID to a UUID format for Supabase
-      const uuidUserId = generateUuidFromString(user.id);
-      
-      console.log("User ID conversion:", {
-        original: user.id,
-        uuid: uuidUserId
-      });
-      
       // Create the listing data object
       const listingData = {
-        user_id: uuidUserId, // Use the generated UUID
+        user_id: user.id,
         crop_name: data.crop_name,
         quantity: parseFloat(data.quantity),
         unit: data.unit,
-        price: parseFloat(data.price),
+        price_per_unit: parseFloat(data.price),
         location: data.location,
         description: data.description || null,
         contact_phone: data.contact_phone || null,
         contact_email: data.contact_email || null,
         is_available: true,
       };
-
-      // Debug log to see what's being submitted
-      console.log("Submitting listing data:", listingData);
 
       const { error } = await supabase.from("crop_listings").insert(listingData);
 

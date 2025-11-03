@@ -16,11 +16,11 @@ import { MarketProvider } from "@/contexts/MarketContext";
 
 const Index: React.FC = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   
   // Get user's region or default to "Central Region"
-  const userRegion = user?.region || "Central Region";
+  const userRegion = profile?.region || "Central Region";
   
   // Use the weather hook to fetch data
   const { weatherData, isLoading: weatherLoading, refreshWeather } = useWeather([
@@ -36,10 +36,10 @@ const Index: React.FC = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-xl font-bold">Farmer Focus Connect</h1>
-              {user && (
+              {profile && (
                 <div className="flex items-center text-sm mt-1 gap-1 text-white/90">
                   <MapPin size={14} />
-                  <span>{user.region || "Central Region"}</span>
+                  <span>{profile.region || "Central Region"}</span>
                 </div>
               )}
             </div>

@@ -57,9 +57,14 @@ export const fetchWeatherData = async (location: string): Promise<WeatherData | 
     };
     
     // Store this new data
+    const weatherWithDate = {
+      ...newWeatherData,
+      forecast_date: new Date().toISOString().split('T')[0]
+    };
+    
     const { data: insertedData, error: insertError } = await supabase
       .from('weather_forecasts')
-      .insert(newWeatherData)
+      .insert([weatherWithDate])
       .select('*');
     
     if (insertError) {

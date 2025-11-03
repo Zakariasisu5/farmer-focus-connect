@@ -58,6 +58,7 @@ const QuestionForm: React.FC = () => {
       if (userId) {
         await supabase.from('community_posts').insert({
           user_id: userId,
+          title: question.substring(0, 100),
           content: question
         });
       }

@@ -130,21 +130,8 @@ const Chats: React.FC = () => {
             .limit(1)
             .single();
 
-          // Count unread messages
-          const { data: unreadCount, error: unreadError } = await supabase
-            .rpc('get_unread_message_count');
-
-          if (unreadError) {
-            console.error("Error fetching unread count:", unreadError);
-          }
-
+          // Count unread messages - simplified for now
           let unreadMessages = 0;
-          if (unreadCount) {
-            const conversationUnread = unreadCount.find(c => c.conversation_id === convId);
-            if (conversationUnread) {
-              unreadMessages = conversationUnread.count;
-            }
-          }
 
           // Map the "other user ID" back to a string ID
           // In a real app with authentication, you'd fetch user profiles

@@ -15,7 +15,7 @@ interface CropListing {
   crop_name: string;
   quantity: number;
   unit: string;
-  price: number;
+  price_per_unit: number;
   location: string;
   description?: string;
   contact_phone?: string;
@@ -207,7 +207,7 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
             </div>
           </div>
           <div className="font-bold text-farm-green">
-            ₵{listing.price} <span className="text-sm font-normal">/ {listing.unit}</span>
+            ₵{listing.price_per_unit} <span className="text-sm font-normal">/ {listing.unit}</span>
           </div>
         </div>
       </CardHeader>
