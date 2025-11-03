@@ -300,6 +300,10 @@ export type Database = {
     }
     Functions: {
       get_unread_message_count: { Args: { p_user_id: string }; Returns: number }
+      is_conversation_participant: {
+        Args: { conv_id: string; user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

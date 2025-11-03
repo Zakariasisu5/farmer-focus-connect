@@ -25,7 +25,7 @@ export const useWeather = (locations: string[]): UseWeatherResult => {
       await supabase.from('user_activities').insert({
         user_id: user.id,
         activity_type: activityType,
-        details: details || {}
+        activity_details: details || {}
       });
     } catch (error) {
       console.error("Failed to log weather activity:", error);

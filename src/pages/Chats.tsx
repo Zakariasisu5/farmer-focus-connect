@@ -29,29 +29,6 @@ const Chats: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Function to generate a UUID v4 from a string ID for Supabase compatibility
-  const generateUuidFromString = (str: string): string => {
-    // This creates a deterministic UUID v4-like string based on the input string
-    const hashCode = (s: string) => {
-      let h = 0;
-      for (let i = 0; i < s.length; i++) {
-        h = Math.imul(31, h) + s.charCodeAt(i) | 0;
-      }
-      return h >>> 0;
-    };
-    
-    const hash = hashCode(str);
-    const parts = [
-      hash.toString(16).padStart(8, '0'),
-      (hash >>> 8).toString(16).padStart(4, '0'),
-      ((hash >>> 16) & 0x0fff | 0x4000).toString(16),
-      ((hash >>> 24) & 0x3fff | 0x8000).toString(16),
-      (hashCode(str + 'salt')).toString(16).padStart(12, '0')
-    ];
-    
-    return parts.join('-');
-  };
-
   // Fetch user's chats
   const { 
     data: chats, 
@@ -63,15 +40,11 @@ const Chats: React.FC = () => {
       if (!user) return [];
       
       try {
-        // Convert string user ID to UUID format for Supabase
-        const uuidUserId = generateUuidFromString(user.id);
-        console.log("Fetching chats for user:", uuidUserId);
-        
         // Get all conversations the user participates in
         const { data: userConversations, error: convsError } = await supabase
           .from('conversation_participants')
           .select('conversation_id')
-          .eq('user_id', uuidUserId);
+          .eq('user_id', user.id);
 
         if (convsError) {
           console.error("Error fetching conversations:", convsError);
@@ -94,7 +67,7 @@ const Chats: React.FC = () => {
             .from('conversation_participants')
             .select('user_id')
             .eq('conversation_id', convId)
-            .neq('user_id', uuidUserId);
+            .neq('user_id', user.id);
 
           if (participantsError) {
             console.error("Error fetching participants:", participantsError);
@@ -174,8 +147,6 @@ const Chats: React.FC = () => {
   // Listen for new messages using Supabase realtime
   useEffect(() => {
     if (!user) return;
-    
-    const uuidUserId = generateUuidFromString(user.id);
     
     // Subscribe to message events for all conversations
     const channel = supabase
