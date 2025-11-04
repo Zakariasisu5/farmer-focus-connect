@@ -58,10 +58,21 @@ const ChatDetail: React.FC = () => {
           throw new Error("Could not find chat participant");
         }
         
+        // Fetch other user's profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', otherParticipant.user_id)
+          .single();
+        
+        if (profileError) {
+          console.error("Error fetching profile:", profileError);
+        }
+        
         return {
           id: chatId,
           other_user_id: otherParticipant.user_id,
-          other_user_name: `User ${otherParticipant.user_id.slice(0, 5)}` // Default name
+          other_user_name: profile?.name || "Unknown User"
         };
       } catch (error) {
         console.error("Error fetching chat info:", error);

@@ -82,6 +82,17 @@ const Chats: React.FC = () => {
           const otherUserId = participants[0].user_id;
           console.log("Other user ID:", otherUserId);
           
+          // Get other user's profile
+          const { data: otherUserProfile, error: profileError } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('id', otherUserId)
+            .single();
+          
+          if (profileError) {
+            console.error("Error fetching profile:", profileError);
+          }
+          
           // Get conversation details
           const { data: conversation, error: conversationError } = await supabase
             .from('conversations')
@@ -106,21 +117,13 @@ const Chats: React.FC = () => {
           // Count unread messages - simplified for now
           let unreadMessages = 0;
 
-          // Map the "other user ID" back to a string ID
-          // In a real app with authentication, you'd fetch user profiles
-          // For our mock app, we'll use a placeholder name
-          
-          // For the mock app, we'll derive a user name from the UUID
-          const shortId = otherUserId.substring(0, 6);
-          const mockName = `Farmer ${shortId}`;
-
           return {
             id: convId,
             created_at: conversation.created_at,
             last_message: latestMessage?.content || null,
             last_message_time: latestMessage?.created_at || conversation.created_at,
             other_user_id: otherUserId,
-            other_user_name: mockName,
+            other_user_name: otherUserProfile?.name || "Unknown User",
             unread_count: unreadMessages
           };
         });
