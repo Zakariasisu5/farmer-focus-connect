@@ -77,7 +77,6 @@ const PostCrop: React.FC = () => {
         location: data.location,
         description: data.description || null,
         contact_phone: data.contact_phone || null,
-        contact_email: data.contact_email || null,
         is_available: true,
       };
 
