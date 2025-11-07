@@ -17,10 +17,12 @@ import { MarketProvider } from "@/contexts/MarketContext";
 const Index: React.FC = () => {
   const { t } = useLanguage();
   const { profile } = useAuth();
+  const { region: selectedRegion } = useMarket();
   const navigate = useNavigate();
   
-  // Get user's region or default to "Central Region"
-  const userRegion = profile?.region || "Central Region";
+  // Use selected region from MarketContext, or default to user's profile region
+  const displayRegion = selectedRegion !== "all" ? selectedRegion : (profile?.region || "Central Region");
+  const userRegion = displayRegion;
   
   // Use the weather hook to fetch data
   const { weatherData, isLoading: weatherLoading, refreshWeather } = useWeather([
@@ -39,7 +41,7 @@ const Index: React.FC = () => {
               {profile && (
                 <div className="flex items-center text-sm mt-1 gap-1 text-white/90">
                   <MapPin size={14} />
-                  <span>{profile.region || "Central Region"}</span>
+                  <span>{displayRegion}</span>
                 </div>
               )}
             </div>

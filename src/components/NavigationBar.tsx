@@ -18,7 +18,7 @@ const NavigationBar: React.FC = () => {
       icon: <MessageCircle size={22} />, 
       label: t("chats"), 
       path: "/chats",
-      badge: isAuthenticated ? true : false
+      badge: false // Remove permanent badge, notifications will show via toast
     },
     { icon: <Settings size={22} />, label: t("settings"), path: "/settings" },
   ];

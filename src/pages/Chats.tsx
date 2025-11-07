@@ -157,8 +157,29 @@ const Chats: React.FC = () => {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
-        (payload) => {
+        async (payload) => {
           console.log('New message received:', payload);
+          const newMessage = payload.new as { user_id: string; conversation_id: string; content: string };
+          
+          // Only show notification if message is not from current user
+          if (newMessage.user_id !== user.id) {
+            // Get sender's name
+            const { data: senderProfile } = await supabase
+              .from('profiles')
+              .select('name')
+              .eq('id', newMessage.user_id)
+              .single();
+            
+            const senderName = senderProfile?.name || "Someone";
+            toast.message(`${senderName}`, {
+              description: newMessage.content,
+              action: {
+                label: t("viewContact"),
+                onClick: () => navigate(`/chats/${newMessage.conversation_id}`)
+              }
+            });
+          }
+          
           // Refetch chats to update the UI
           refetch();
         }
@@ -168,7 +189,7 @@ const Chats: React.FC = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, refetch]);
+  }, [user, refetch, navigate, t]);
 
   // Filter chats based on search
   const filteredChats = searchTerm.trim() === "" 
