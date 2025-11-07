@@ -98,6 +98,16 @@ const ChatDetail: React.FC = () => {
           
         if (error) throw error;
         
+        // Mark messages as read when viewing the chat
+        if (user && data) {
+          await supabase
+            .from('messages')
+            .update({ read: true })
+            .eq('conversation_id', chatId)
+            .neq('user_id', user.id)
+            .eq('read', false);
+        }
+        
         return data;
       } catch (error) {
         console.error("Error fetching messages:", error);
