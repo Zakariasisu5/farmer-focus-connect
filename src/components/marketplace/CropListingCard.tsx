@@ -72,80 +72,19 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
     try {
       setIsStartingChat(true);
       
-      // Check if there's an existing conversation between these users first
-      const { data: existingConversations, error: fetchError } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id, user_id')
-        .eq('user_id', user!.id);
+      // Use the database function to create or get conversation
+      const { data, error } = await supabase.rpc('create_or_get_conversation', {
+        p_other_user: listing.user_id
+      });
       
-      if (fetchError) {
-        console.error("Error fetching conversations:", fetchError);
-        throw fetchError;
-      }
-      
-      let conversationId = null;
-      
-      if (existingConversations && existingConversations.length > 0) {
-        // For each conversation the current user is in, check if the listing owner is also in it
-        for (const conv of existingConversations) {
-          const { data: otherParticipant, error: participantError } = await supabase
-            .from('conversation_participants')
-            .select('user_id')
-            .eq('conversation_id', conv.conversation_id)
-            .eq('user_id', listing.user_id)
-            .single();
-          
-          if (participantError) {
-            console.log("Error or no match when checking participant:", participantError);
-            continue;
-          }
-          
-          if (otherParticipant) {
-            // Found a conversation with both users
-            conversationId = conv.conversation_id;
-            break;
-          }
-        }
-      }
-      
-      // If no existing conversation, create a new one
-      if (!conversationId) {
-        // Create new conversation
-        const { data: newConversation, error: conversationError } = await supabase
-          .from('conversations')
-          .insert({})
-          .select();
-          
-        if (conversationError) {
-          console.error("Error creating conversation:", conversationError);
-          throw conversationError;
-        }
-        
-        if (!newConversation || newConversation.length === 0) {
-          throw new Error("Failed to create conversation");
-        }
-        
-        conversationId = newConversation[0].id;
-        
-        // Add both users as participants
-        const participantsToAdd = [
-          { conversation_id: conversationId, user_id: user!.id },
-          { conversation_id: conversationId, user_id: listing.user_id }
-        ];
-        
-        const { error: participantError } = await supabase
-          .from('conversation_participants')
-          .insert(participantsToAdd);
-          
-        if (participantError) {
-          console.error("Error adding participants:", participantError);
-          throw participantError;
-        }
+      if (error) {
+        console.error("Error creating/getting conversation:", error);
+        throw error;
       }
       
       setIsStartingChat(false);
       toast.success(t("startingChat"));
-      navigate(`/chats/${conversationId}`);
+      navigate(`/chats/${data}`);
     } catch (error) {
       console.error("Error starting chat:", error);
       toast.error(t("errorStartingChat"));

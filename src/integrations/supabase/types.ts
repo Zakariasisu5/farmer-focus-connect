@@ -299,6 +299,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_or_get_conversation: {
+        Args: { p_other_user: string }
+        Returns: string
+      }
       get_unread_message_count: { Args: { p_user_id: string }; Returns: number }
       is_conversation_participant: {
         Args: { p_conv_id: string; p_user_id: string }
