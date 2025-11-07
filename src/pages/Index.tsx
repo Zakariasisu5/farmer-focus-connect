@@ -14,7 +14,7 @@ import { useWeather } from "@/hooks/useWeather";
 import { useMarket } from "@/contexts/MarketContext";
 import { MarketProvider } from "@/contexts/MarketContext";
 
-const Index: React.FC = () => {
+const IndexContent: React.FC = () => {
   const { t } = useLanguage();
   const { profile } = useAuth();
   const { region: selectedRegion } = useMarket();
@@ -31,74 +31,80 @@ const Index: React.FC = () => {
   ]);
 
   return (
-    <MarketProvider>
-      <div className="pb-20 min-h-screen bg-background">
-        {/* Header */}
-        <div className="bg-farm-green p-4 text-white shadow-md">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-xl font-bold">Farmer Focus Connect</h1>
-              {profile && (
-                <div className="flex items-center text-sm mt-1 gap-1 text-white/90">
-                  <MapPin size={14} />
-                  <span>{displayRegion}</span>
-                </div>
-              )}
-            </div>
-            <LanguageSelector />
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="container px-4 py-6 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Calendar className="text-farm-earth" />
-              {t("weatherForecast")}
-            </h2>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="text-farm-sky flex items-center gap-1" 
-              onClick={refreshWeather}
-              disabled={weatherLoading}
-            >
-              <RefreshCw size={16} className={weatherLoading ? "animate-spin" : ""} />
-              {t("today")}
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            {weatherData && weatherData.length > 0 ? (
-              weatherData.map((weather, index) => (
-                <WeatherCard
-                  key={index}
-                  day={index === 0 ? t("today") : t("tomorrow")}
-                  condition={weather.condition}
-                  temperature={weather.temperature}
-                  humidity={weather.humidity}
-                />
-              ))
-            ) : (
-              // Fallback while loading
-              Array(2).fill(0).map((_, index) => (
-                <WeatherCard
-                  key={index}
-                  day={index === 0 ? t("today") : t("tomorrow")}
-                  condition="sunny"
-                  temperature={28}
-                  humidity={65}
-                />
-              ))
+    <div className="pb-20 min-h-screen bg-background">
+      {/* Header */}
+      <div className="bg-farm-green p-4 text-white shadow-md">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold">Farmer Focus Connect</h1>
+            {profile && (
+              <div className="flex items-center text-sm mt-1 gap-1 text-white/90">
+                <MapPin size={14} />
+                <span>{displayRegion}</span>
+              </div>
             )}
           </div>
+          <LanguageSelector />
+        </div>
+      </div>
 
-          <MarketPricesSection navigate={navigate} />
+      {/* Main Content */}
+      <div className="container px-4 py-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Calendar className="text-farm-earth" />
+            {t("weatherForecast")}
+          </h2>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-farm-sky flex items-center gap-1" 
+            onClick={refreshWeather}
+            disabled={weatherLoading}
+          >
+            <RefreshCw size={16} className={weatherLoading ? "animate-spin" : ""} />
+            {t("today")}
+          </Button>
         </div>
 
-        {/* Bottom Navigation */}
-        <NavigationBar />
+        <div className="grid grid-cols-2 gap-4">
+          {weatherData && weatherData.length > 0 ? (
+            weatherData.map((weather, index) => (
+              <WeatherCard
+                key={index}
+                day={index === 0 ? t("today") : t("tomorrow")}
+                condition={weather.condition}
+                temperature={weather.temperature}
+                humidity={weather.humidity}
+              />
+            ))
+          ) : (
+            // Fallback while loading
+            Array(2).fill(0).map((_, index) => (
+              <WeatherCard
+                key={index}
+                day={index === 0 ? t("today") : t("tomorrow")}
+                condition="sunny"
+                temperature={28}
+                humidity={65}
+              />
+            ))
+          )}
+        </div>
+
+        <MarketPricesSection navigate={navigate} />
       </div>
+
+      {/* Bottom Navigation */}
+      <NavigationBar />
+    </div>
+  );
+};
+
+const Index: React.FC = () => {
+  return (
+    <MarketProvider>
+      <IndexContent />
     </MarketProvider>
   );
 };
