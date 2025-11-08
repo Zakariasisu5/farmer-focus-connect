@@ -178,6 +178,7 @@ export type Database = {
           conversation_id: string
           created_at: string | null
           id: string
+          image_url: string | null
           read: boolean | null
           user_id: string
         }
@@ -186,6 +187,7 @@ export type Database = {
           conversation_id: string
           created_at?: string | null
           id?: string
+          image_url?: string | null
           read?: boolean | null
           user_id: string
         }
@@ -194,6 +196,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string | null
           id?: string
+          image_url?: string | null
           read?: boolean | null
           user_id?: string
         }
@@ -302,6 +305,10 @@ export type Database = {
       create_or_get_conversation: {
         Args: { p_other_user: string }
         Returns: string
+      }
+      delete_conversation: {
+        Args: { p_conversation_id: string }
+        Returns: undefined
       }
       get_unread_message_count: { Args: { p_user_id: string }; Returns: number }
       is_conversation_participant: {

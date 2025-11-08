@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Send, User, Loader2 } from "lucide-react";
+import { ArrowLeft, Send, User, Loader2, Trash2, Image as ImageIcon, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -16,6 +16,7 @@ interface Message {
   id: string;
   user_id: string;
   content: string;
+  image_url?: string;
   created_at: string;
   read: boolean;
 }
@@ -30,8 +31,11 @@ const ChatDetail: React.FC = () => {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [newMessage, setNewMessage] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Fetch conversation participants to get the other user's info
   const { data: chatInfo, isLoading: loadingParticipants } = useQuery({
@@ -118,9 +122,30 @@ const ChatDetail: React.FC = () => {
     enabled: !!chatId && !!chatInfo
   });
   
+  // Delete conversation mutation
+  const deleteConversationMutation = useMutation({
+    mutationFn: async () => {
+      if (!chatId) throw new Error("Missing chat ID");
+      
+      const { error } = await supabase.rpc('delete_conversation', {
+        p_conversation_id: chatId
+      });
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(t("chatDeleted"));
+      navigate("/chats");
+    },
+    onError: (error) => {
+      console.error("Error deleting conversation:", error);
+      toast.error(t("errorDeletingChat"));
+    }
+  });
+
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: async (messageContent: string) => {
+    mutationFn: async ({ content, imageUrl }: { content: string; imageUrl?: string }) => {
       if (!user || !chatId) throw new Error("Missing user or chat ID");
       
       const { data, error } = await supabase
@@ -128,7 +153,8 @@ const ChatDetail: React.FC = () => {
         .insert({
           conversation_id: chatId,
           user_id: user.id,
-          content: messageContent
+          content: content,
+          image_url: imageUrl || null
         })
         .select();
         
@@ -138,6 +164,8 @@ const ChatDetail: React.FC = () => {
     onSuccess: () => {
       // Invalidate and refetch messages
       queryClient.invalidateQueries({ queryKey: ["chatMessages", chatId] });
+      setImageFile(null);
+      setImagePreview(null);
     },
     onError: (error) => {
       console.error("Error sending message:", error);
@@ -189,18 +217,69 @@ const ChatDetail: React.FC = () => {
     }
   }, [messages]);
   
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(t("imageTooLarge"));
+        return;
+      }
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim() || !user) return;
-    
-    const messageToSend = newMessage;
-    setNewMessage("");
+    if ((!newMessage.trim() && !imageFile) || !user) return;
     
     try {
-      await sendMessageMutation.mutateAsync(messageToSend);
+      let imageUrl: string | undefined = undefined;
+
+      // Upload image if provided
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('chat-images')
+          .upload(fileName, imageFile);
+
+        if (uploadError) {
+          console.error("Error uploading image:", uploadError);
+          toast.error(t("errorUploadingImage"));
+          return;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('chat-images')
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrl;
+      }
+
+      const messageContent = newMessage.trim() || t("sentAnImage");
+      setNewMessage("");
+      
+      await sendMessageMutation.mutateAsync({ content: messageContent, imageUrl });
     } catch (error) {
       console.error("Failed to send message:", error);
+    }
+  };
+
+  const handleDeleteChat = () => {
+    if (window.confirm(t("confirmDeleteChat"))) {
+      deleteConversationMutation.mutate();
     }
   };
   
@@ -219,15 +298,16 @@ const ChatDetail: React.FC = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="bg-farm-green text-white p-4 flex items-center shadow-md">
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => navigate("/chats")}
-          className="text-white hover:bg-farm-green/80 mr-2"
-        >
-          <ArrowLeft size={20} />
-        </Button>
+      <div className="bg-farm-green text-white p-4 flex items-center justify-between shadow-md">
+        <div className="flex items-center">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate("/chats")}
+            className="text-white hover:bg-farm-green/80 mr-2"
+          >
+            <ArrowLeft size={20} />
+          </Button>
         
         {isLoading ? (
           <div className="flex items-center">
@@ -249,6 +329,16 @@ const ChatDetail: React.FC = () => {
             </div>
           </>
         )}
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleDeleteChat}
+          className="text-white hover:bg-destructive"
+          disabled={deleteConversationMutation.isPending}
+        >
+          <Trash2 size={18} />
+        </Button>
       </div>
       
       {/* Messages */}
@@ -281,6 +371,13 @@ const ChatDetail: React.FC = () => {
                     : "bg-muted"
                   }`}
                 >
+                  {message.image_url && (
+                    <img 
+                      src={message.image_url} 
+                      alt="Shared image"
+                      className="w-full rounded-lg mb-2 max-h-64 object-cover"
+                    />
+                  )}
                   <p className="text-sm">{message.content}</p>
                   <span className="text-xs block text-right mt-1 opacity-70">
                     {formattedTime}
@@ -296,27 +393,65 @@ const ChatDetail: React.FC = () => {
       {/* Message Input */}
       <form 
         onSubmit={handleSendMessage}
-        className="p-3 border-t border-border flex gap-2"
+        className="border-t border-border"
       >
-        <Input
-          placeholder={t("typeMessage")}
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          className="flex-1"
-          disabled={sendMessageMutation.isPending}
-        />
-        <Button 
-          type="submit"
-          disabled={!newMessage.trim() || sendMessageMutation.isPending}
-          size="icon"
-          className="shrink-0"
-        >
-          {sendMessageMutation.isPending ? (
-            <Loader2 size={18} className="animate-spin" />
-          ) : (
-            <Send size={18} />
-          )}
-        </Button>
+        {imagePreview && (
+          <div className="p-3 border-b border-border">
+            <div className="relative inline-block">
+              <img 
+                src={imagePreview} 
+                alt="Preview"
+                className="h-20 w-20 object-cover rounded-lg"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="icon"
+                className="absolute -top-2 -right-2 h-6 w-6"
+                onClick={removeImage}
+              >
+                <X size={12} />
+              </Button>
+            </div>
+          </div>
+        )}
+        <div className="p-3 flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageChange}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={sendMessageMutation.isPending}
+          >
+            <ImageIcon size={18} />
+          </Button>
+          <Input
+            placeholder={t("typeMessage")}
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            className="flex-1"
+            disabled={sendMessageMutation.isPending}
+          />
+          <Button 
+            type="submit"
+            disabled={(!newMessage.trim() && !imageFile) || sendMessageMutation.isPending}
+            size="icon"
+            className="shrink-0"
+          >
+            {sendMessageMutation.isPending ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Send size={18} />
+            )}
+          </Button>
+        </div>
       </form>
     </div>
   );

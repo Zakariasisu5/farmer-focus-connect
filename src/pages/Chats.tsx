@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { MessageSquare, PenSquare, Search } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { MessageSquare, PenSquare, Search, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ const Chats: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
 
   // Fetch user's chats
@@ -147,6 +148,32 @@ const Chats: React.FC = () => {
     enabled: !!user
   });
 
+  // Delete conversation mutation
+  const deleteConversationMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      const { error } = await supabase.rpc('delete_conversation', {
+        p_conversation_id: conversationId
+      });
+        
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success(t("chatDeleted"));
+      queryClient.invalidateQueries({ queryKey: ["chats", user?.id] });
+    },
+    onError: (error) => {
+      console.error("Error deleting conversation:", error);
+      toast.error(t("errorDeletingChat"));
+    }
+  });
+
+  const handleDeleteChat = (e: React.MouseEvent, chatId: string) => {
+    e.stopPropagation();
+    if (window.confirm(t("confirmDeleteChat"))) {
+      deleteConversationMutation.mutate(chatId);
+    }
+  };
+
   // Listen for new messages using Supabase realtime
   useEffect(() => {
     if (!user) return;
@@ -256,11 +283,23 @@ const Chats: React.FC = () => {
       {!isLoading && filteredChats && filteredChats.length > 0 && (
         <div className="container mx-auto px-4 divide-y">
           {filteredChats.map(chat => (
-            <ChatListItem 
-              key={chat.id}
-              chat={chat}
-              onClick={() => navigate(`/chats/${chat.id}`)}
-            />
+            <div key={chat.id} className="flex items-center group">
+              <div className="flex-1" onClick={() => navigate(`/chats/${chat.id}`)}>
+                <ChatListItem 
+                  chat={chat}
+                  onClick={() => {}}
+                />
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10"
+                onClick={(e) => handleDeleteChat(e, chat.id)}
+                disabled={deleteConversationMutation.isPending}
+              >
+                <Trash2 size={18} />
+              </Button>
+            </div>
           ))}
         </div>
       )}

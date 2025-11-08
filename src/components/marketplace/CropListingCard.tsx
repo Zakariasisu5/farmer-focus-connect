@@ -1,6 +1,6 @@
 
-import React, { useState } from "react";
-import { Phone, Mail, MapPin, MessageCircle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Phone, Mail, MapPin, MessageCircle, User } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -20,6 +20,7 @@ interface CropListing {
   description?: string;
   contact_phone?: string;
   contact_email?: string;
+  image_url?: string;
   is_available: boolean;
   created_at: string;
 }
@@ -36,8 +37,26 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
   const navigate = useNavigate();
   const [showContact, setShowContact] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const [posterName, setPosterName] = useState<string>("");
   
   const isOwner = user?.id === listing.user_id;
+
+  // Fetch poster's name
+  useEffect(() => {
+    const fetchPosterName = async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('name')
+        .eq('id', listing.user_id)
+        .single();
+
+      if (!error && data) {
+        setPosterName(data.name);
+      }
+    };
+
+    fetchPosterName();
+  }, [listing.user_id]);
   
   const formattedDate = new Date(listing.created_at).toLocaleDateString(undefined, {
     year: "numeric",
@@ -94,6 +113,15 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
 
   return (
     <Card className="overflow-hidden">
+      {listing.image_url && (
+        <div className="w-full h-48 overflow-hidden">
+          <img 
+            src={listing.image_url} 
+            alt={listing.crop_name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
       <CardHeader className="bg-farm-green/10 p-4">
         <div className="flex justify-between items-start">
           <div>
@@ -102,6 +130,12 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
               <MapPin size={14} className="mr-1" />
               {listing.location}
             </div>
+            {posterName && (
+              <div className="flex items-center text-xs text-muted-foreground mt-1">
+                <User size={12} className="mr-1" />
+                {t("postedBy")}: {posterName}
+              </div>
+            )}
           </div>
           <div className="font-bold text-farm-green">
             ₵{listing.price_per_unit} <span className="text-sm font-normal">/ {listing.unit}</span>

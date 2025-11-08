@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, Crop, CircleDollarSign, Info, MapPin, Phone, Mail } from "lucide-react";
+import { ArrowLeft, Crop, CircleDollarSign, Info, MapPin, Phone, Mail, Upload, X } from "lucide-react";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -41,6 +41,9 @@ const PostCrop: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Common units for agricultural products
   const units = ["kg", "bag", "crate", "box", "ton", "piece", "dozen", "bundle"];
@@ -60,6 +63,27 @@ const PostCrop: React.FC = () => {
     },
   });
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        toast.error(t("imageTooLarge"));
+        return;
+      }
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+  };
+
   const onSubmit = async (data: FormValues) => {
     if (!user) {
       toast.error(t("mustBeLoggedIn"));
@@ -67,6 +91,30 @@ const PostCrop: React.FC = () => {
     }
 
     try {
+      setIsUploading(true);
+      let imageUrl = null;
+
+      // Upload image if provided
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('product-images')
+          .upload(fileName, imageFile);
+
+        if (uploadError) {
+          console.error("Error uploading image:", uploadError);
+          throw uploadError;
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrl;
+      }
+
       // Create the listing data object
       const listingData = {
         user_id: user.id,
@@ -77,6 +125,7 @@ const PostCrop: React.FC = () => {
         location: data.location,
         description: data.description || null,
         contact_phone: data.contact_phone || null,
+        image_url: imageUrl,
         is_available: true,
       };
 
@@ -92,6 +141,8 @@ const PostCrop: React.FC = () => {
     } catch (error) {
       console.error("Error posting crop listing:", error);
       toast.error(t("errorPostingListing"));
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -195,6 +246,45 @@ const PostCrop: React.FC = () => {
                   </FormItem>
                 )}
               />
+
+              {/* Image Upload */}
+              <div className="mt-4">
+                <FormLabel className="flex items-center gap-1">
+                  <Upload size={14} className="text-muted-foreground" />
+                  {t("productImage")}
+                </FormLabel>
+                <div className="mt-2">
+                  {imagePreview ? (
+                    <div className="relative">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="w-full h-48 object-cover rounded-lg"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-2 right-2"
+                        onClick={removeImage}
+                      >
+                        <X size={16} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                      <Upload size={32} className="text-muted-foreground mb-2" />
+                      <span className="text-sm text-muted-foreground">{t("clickToUpload")}</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Location Section */}
@@ -300,8 +390,12 @@ const PostCrop: React.FC = () => {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-farm-green hover:bg-farm-green/90">
-              {t("postListing")}
+            <Button 
+              type="submit" 
+              className="w-full bg-farm-green hover:bg-farm-green/90"
+              disabled={isUploading}
+            >
+              {isUploading ? t("uploading") : t("postListing")}
             </Button>
           </form>
         </Form>
