@@ -119,7 +119,8 @@ const ChatDetail: React.FC = () => {
         return [];
       }
     },
-    enabled: !!chatId && !!chatInfo
+    enabled: !!chatId && !!chatInfo,
+    refetchOnWindowFocus: false
   });
   
   // Delete conversation mutation

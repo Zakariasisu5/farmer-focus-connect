@@ -24,7 +24,7 @@ const Marketplace: React.FC = () => {
 
   // Fetch crop listings
   const { data: listings, isLoading, refetch } = useQuery({
-    queryKey: ["cropListings"],
+    queryKey: ["cropListings", sortBy],
     queryFn: async () => {
       try {
         const { data, error } = await supabase
@@ -40,7 +40,9 @@ const Marketplace: React.FC = () => {
         toast.error(t("errorFetchingListings"));
         return [];
       }
-    }
+    },
+    staleTime: 30000, // Cache for 30 seconds
+    refetchOnWindowFocus: false
   });
 
   // Filter listings based on search term and selected region

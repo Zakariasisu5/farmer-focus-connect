@@ -12,7 +12,7 @@ const NavigationBar: React.FC = () => {
   const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Fetch unread message count
+  // Fetch unread message count - optimized
   useEffect(() => {
     if (!user) {
       setUnreadCount(0);
@@ -30,14 +30,17 @@ const NavigationBar: React.FC = () => {
 
     fetchUnreadCount();
 
-    // Subscribe to new messages to update count in real-time
+    // Subscribe to new messages - only refetch on INSERT for current user
     const channel = supabase
       .channel('unread-messages-nav')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
-        () => {
-          fetchUnreadCount();
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload) => {
+          // Only update if message is for this user (not from them)
+          if (payload.new.user_id !== user.id) {
+            fetchUnreadCount();
+          }
         }
       )
       .subscribe();

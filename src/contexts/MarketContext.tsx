@@ -1,5 +1,6 @@
 
 import React, { createContext, useState, useContext, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useLanguage } from "./LanguageContext";
 import { useAuth } from "./AuthContext";
@@ -55,14 +56,6 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { user, profile } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [region, setRegion] = useState("all");
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const [marketData, setMarketData] = useState<MarketItem[]>([]);
-
-  // Initial data fetch on component mount
-  useEffect(() => {
-    loadMarketPrices();
-  }, []);
 
   // Set default region based on user's saved preference if they're logged in
   useEffect(() => {
@@ -70,32 +63,33 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setRegion(profile.region);
     }
   }, [profile]);
-  
-  // Function to load market prices from database
-  const loadMarketPrices = async () => {
-    setIsLoading(true);
-    
-    try {
-      const data = await fetchMarketPrices(region !== "all" ? region : undefined);
-      
-      if (data && data.length > 0) {
-        setMarketData(data);
-        setLastUpdated(new Date());
+
+  // Use React Query for market data with caching
+  const { data: marketData = [], isLoading, refetch } = useQuery({
+    queryKey: ["marketPrices", region],
+    queryFn: async () => {
+      try {
+        const data = await fetchMarketPrices(region !== "all" ? region : undefined);
         
-        // Log user activity if user is logged in
-        if (user) {
-          logUserActivity("view_market_prices", { region });
+        if (data && data.length > 0) {
+          // Log user activity if user is logged in
+          if (user) {
+            logUserActivity("view_market_prices", { region });
+          }
+          return data;
+        } else {
+          toast.error(t("errorFetchingMarketData"));
+          return [];
         }
-      } else {
+      } catch (error) {
+        console.error("Error loading market prices:", error);
         toast.error(t("errorFetchingMarketData"));
+        return [];
       }
-    } catch (error) {
-      console.error("Error loading market prices:", error);
-      toast.error(t("errorFetchingMarketData"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    },
+    staleTime: 60000, // Cache for 1 minute
+    refetchOnWindowFocus: false
+  });
   
   // Function to log user activities
   const logUserActivity = async (activityType: string, details?: any) => {
@@ -114,13 +108,11 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   
   // Function to refresh market prices
   const refreshPrices = () => {
-    setIsLoading(true);
-    
     // Log the refresh attempt
     logUserActivity("refresh_market_prices", { region });
     
-    // Load the latest prices
-    loadMarketPrices();
+    // Refetch using React Query
+    refetch();
   };
 
   // Save user's region preference
@@ -136,7 +128,6 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     // Only save region preference if user is logged in and region is a specific region (not "all")
     if (user && newRegion !== "all") {
       try {
-        // This is a simplified version - in a real app you'd update the user's profile in Supabase
         toast.success(t("regionPreferenceUpdated"), {
           description: newRegion
         });
@@ -145,9 +136,6 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         toast.error(t("errorSavingPreference"));
       }
     }
-    
-    // Refresh prices for the new region
-    await loadMarketPrices();
   };
 
   const filteredData = marketData.filter((item) => {
@@ -163,7 +151,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         searchTerm,
         region,
         isLoading,
-        lastUpdated,
+        lastUpdated: new Date(),
         filteredData,
         setSearchTerm,
         setRegion,

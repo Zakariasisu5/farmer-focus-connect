@@ -30,7 +30,7 @@ const Chats: React.FC = () => {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch user's chats
+  // Fetch user's chats - optimized with single query
   const { 
     data: chats, 
     isLoading,
@@ -41,100 +41,85 @@ const Chats: React.FC = () => {
       if (!user) return [];
       
       try {
-        // Get all conversations the user participates in
-        const { data: userConversations, error: convsError } = await supabase
+        // Get user's conversations first
+        const { data: userConvs, error: userError } = await supabase
           .from('conversation_participants')
           .select('conversation_id')
           .eq('user_id', user.id);
 
-        if (convsError) {
-          console.error("Error fetching conversations:", convsError);
-          throw convsError;
-        }
+        if (userError) throw userError;
+        if (!userConvs || userConvs.length === 0) return [];
 
-        console.log("User conversations:", userConversations);
-        if (!userConversations || userConversations.length === 0) {
-          return [];
-        }
+        const userConvIds = userConvs.map(c => c.conversation_id);
 
-        // Extract conversation IDs
-        const conversationIds = userConversations.map(c => c.conversation_id);
-        console.log("Conversation IDs:", conversationIds);
+        // Get all participants for these conversations
+        const { data: allParticipants, error: partError } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id, user_id')
+          .in('conversation_id', userConvIds)
+          .neq('user_id', user.id);
 
-        // For each conversation, find the other participant
-        const chatPromises = conversationIds.map(async (convId) => {
-          // Get other participants
-          const { data: participants, error: participantsError } = await supabase
-            .from('conversation_participants')
-            .select('user_id')
-            .eq('conversation_id', convId)
-            .neq('user_id', user.id);
+        if (partError) throw partError;
+        if (!allParticipants || allParticipants.length === 0) return [];
 
-          if (participantsError) {
-            console.error("Error fetching participants:", participantsError);
-            throw participantsError;
+        // Get all user IDs to fetch profiles
+        const userIds = [...new Set(allParticipants.map(p => p.user_id))];
+        
+        // Fetch all profiles in one query
+        const { data: profiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .in('id', userIds);
+
+        if (profileError) throw profileError;
+
+        // Create profile map
+        const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+        // Get conversations
+        const { data: conversations, error: convError } = await supabase
+          .from('conversations')
+          .select('id, created_at')
+          .in('id', userConvIds);
+
+        if (convError) throw convError;
+
+        const convMap = new Map(conversations?.map(c => [c.id, c]) || []);
+
+        // Get latest messages for all conversations in one query
+        const { data: latestMessages } = await supabase
+          .from('messages')
+          .select('conversation_id, content, created_at')
+          .in('conversation_id', userConvIds)
+          .order('created_at', { ascending: false });
+
+        // Map latest message per conversation
+        const messageMap = new Map();
+        latestMessages?.forEach(msg => {
+          if (!messageMap.has(msg.conversation_id)) {
+            messageMap.set(msg.conversation_id, msg);
           }
+        });
 
-          if (!participants || participants.length === 0) {
-            console.log("No other participants found for conversation:", convId);
-            return null;
-          }
-
-          const otherUserId = participants[0].user_id;
-          console.log("Other user ID:", otherUserId);
+        // Build chat list
+        const chatList: Chat[] = allParticipants.map(participant => {
+          const conv = convMap.get(participant.conversation_id);
+          const profile = profileMap.get(participant.user_id);
+          const latestMsg = messageMap.get(participant.conversation_id);
           
-          // Get other user's profile
-          const { data: otherUserProfile, error: profileError } = await supabase
-            .from('profiles')
-            .select('name')
-            .eq('id', otherUserId)
-            .single();
-          
-          if (profileError) {
-            console.error("Error fetching profile:", profileError);
-          }
-          
-          // Get conversation details
-          const { data: conversation, error: conversationError } = await supabase
-            .from('conversations')
-            .select('created_at')
-            .eq('id', convId)
-            .single();
-
-          if (conversationError) {
-            console.error("Error fetching conversation:", conversationError);
-            throw conversationError;
-          }
-
-          // Get latest message
-          const { data: latestMessage, error: messageError } = await supabase
-            .from('messages')
-            .select('content, created_at, user_id')
-            .eq('conversation_id', convId)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
-
-          // Count unread messages - simplified for now
-          let unreadMessages = 0;
-
           return {
-            id: convId,
-            created_at: conversation.created_at,
-            last_message: latestMessage?.content || null,
-            last_message_time: latestMessage?.created_at || conversation.created_at,
-            other_user_id: otherUserId,
-            other_user_name: otherUserProfile?.name || "Unknown User",
-            unread_count: unreadMessages
+            id: participant.conversation_id,
+            created_at: conv?.created_at || new Date().toISOString(),
+            last_message: latestMsg?.content || null,
+            last_message_time: latestMsg?.created_at || conv?.created_at || new Date().toISOString(),
+            other_user_id: participant.user_id,
+            other_user_name: profile?.name || "Unknown User",
+            unread_count: 0
           };
         });
 
-        // Execute all promises and filter out null results
-        const results = await Promise.all(chatPromises);
-        const validChats = results.filter(chat => chat !== null) as Chat[];
-        
         // Sort by latest message time
-        return validChats.sort((a, b) => {
+        return chatList.sort((a, b) => {
           const timeA = a.last_message_time || a.created_at;
           const timeB = b.last_message_time || b.created_at;
           return new Date(timeB).getTime() - new Date(timeA).getTime();
@@ -145,7 +130,9 @@ const Chats: React.FC = () => {
         return [];
       }
     },
-    enabled: !!user
+    enabled: !!user,
+    staleTime: 30000, // Cache for 30 seconds
+    refetchOnWindowFocus: false
   });
 
   // Delete conversation mutation
