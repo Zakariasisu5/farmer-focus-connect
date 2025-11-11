@@ -49,7 +49,7 @@ const Support: React.FC = () => {
   return (
     <div className="pb-20 min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-farm-green p-4 text-white shadow-md">
+        <div className="bg-background border-b border-border p-4 text-primary shadow-sm">
         <div className="flex justify-between items-center">
           <h1 className="text-xl font-bold">{t("support")}</h1>
           <LanguageSelector />

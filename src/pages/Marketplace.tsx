@@ -58,11 +58,11 @@ const Marketplace: React.FC = () => {
 
   return (
     <div className="pb-20 min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-farm-green p-4 text-white shadow-md">
+      {/* Header (match footer colors) */}
+      <div className="bg-background border-b border-border p-4 text-primary shadow-sm">
         <div className="container px-4 mx-auto">
           <h1 className="text-xl font-bold">{t("marketplace")}</h1>
-          <p className="text-sm mt-1">{t("buyFromFarmers")}</p>
+          <p className="text-sm mt-1 text-muted-foreground">{t("buyFromFarmers")}</p>
         </div>
       </div>
 

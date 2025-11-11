@@ -148,21 +148,21 @@ const PostCrop: React.FC = () => {
 
   return (
     <div className="pb-20 min-h-screen bg-background">
-      {/* Header with improved styling */}
-      <div className="bg-farm-green p-4 text-white shadow-md">
+      {/* Header (match footer colors) */}
+      <div className="bg-background border-b border-border p-4 text-primary shadow-sm">
         <div className="container px-4 mx-auto">
           <div className="flex items-center">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="mr-2 text-white hover:bg-farm-green/20" 
+              className="mr-2 text-primary hover:bg-primary/10" 
               onClick={() => navigate("/marketplace")}
             >
               <ArrowLeft size={20} />
             </Button>
             <h1 className="text-xl font-bold">{t("postCropListing")}</h1>
           </div>
-          <p className="text-sm mt-1 opacity-90">{t("shareYourProduceWithBuyers")}</p>
+          <p className="text-sm mt-1 text-muted-foreground">{t("shareYourProduceWithBuyers")}</p>
         </div>
       </div>
 

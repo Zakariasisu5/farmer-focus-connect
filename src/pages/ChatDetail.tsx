@@ -298,14 +298,14 @@ const ChatDetail: React.FC = () => {
   
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="bg-farm-green text-white p-4 flex items-center justify-between shadow-md">
+      {/* Header (styling aligned with footer) */}
+      <div className="bg-background border-b border-border p-4 flex items-center justify-between text-primary shadow-sm">
         <div className="flex items-center">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => navigate("/chats")}
-            className="text-white hover:bg-farm-green/80 mr-2"
+            className="text-primary hover:bg-primary/10 mr-2"
           >
             <ArrowLeft size={20} />
           </Button>
@@ -335,7 +335,7 @@ const ChatDetail: React.FC = () => {
           variant="ghost"
           size="icon"
           onClick={handleDeleteChat}
-          className="text-white hover:bg-destructive"
+          className="text-primary hover:bg-destructive/10"
           disabled={deleteConversationMutation.isPending}
         >
           <Trash2 size={18} />
