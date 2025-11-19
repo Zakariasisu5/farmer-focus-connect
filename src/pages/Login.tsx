@@ -32,7 +32,7 @@ const Login: React.FC = () => {
     
     try {
       await login(email, password);
-      navigate("/");
+      navigate("/home");
     } catch (error) {
       setError("Invalid credentials. Please try again.");
     } finally {

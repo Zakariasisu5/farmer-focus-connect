@@ -143,6 +143,7 @@ const MarketPricesSection: React.FC<{ navigate: (path: string) => void }> = ({ n
               unit={market.unit}
               change={market.change}
               region={market.region}
+              isRealTime={true}
             />
           ))
         ) : (

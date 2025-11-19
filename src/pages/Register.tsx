@@ -42,7 +42,7 @@ const Register: React.FC = () => {
     
     try {
       await register(name, email, password, region);
-      navigate("/");
+      navigate("/home");
     } catch (error) {
       setError("Registration failed. Please try again.");
     } finally {

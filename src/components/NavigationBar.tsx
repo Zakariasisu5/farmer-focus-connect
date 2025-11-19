@@ -51,7 +51,7 @@ const NavigationBar: React.FC = () => {
   }, [user]);
 
   const navItems = [
-    { icon: <Home size={22} />, label: t("home"), path: "/" },
+    { icon: <Home size={22} />, label: t("home"), path: "/home" },
     { icon: <ShoppingCart size={22} />, label: t("marketplace"), path: "/marketplace" },
     { 
       icon: <MessageCircle size={22} />, 

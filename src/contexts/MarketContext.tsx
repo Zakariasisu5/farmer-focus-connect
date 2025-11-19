@@ -64,6 +64,9 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [profile]);
 
+  // Track last updated time
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<Date>(new Date());
+
   // Use React Query for market data with caching
   const { data: marketData = [], isLoading, refetch } = useQuery({
     queryKey: ["marketPrices", region],
@@ -72,6 +75,9 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const data = await fetchMarketPrices(region !== "all" ? region : undefined);
         
         if (data && data.length > 0) {
+          // Update last updated time
+          setLastUpdatedTime(new Date());
+          
           // Log user activity if user is logged in
           if (user) {
             logUserActivity("view_market_prices", { region });
@@ -151,7 +157,7 @@ export const MarketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         searchTerm,
         region,
         isLoading,
-        lastUpdated: new Date(),
+        lastUpdated: lastUpdatedTime,
         filteredData,
         setSearchTerm,
         setRegion,

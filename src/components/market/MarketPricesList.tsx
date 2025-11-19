@@ -5,9 +5,11 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import MarketPriceCard from "@/components/MarketPriceCard";
 import { useMarket } from "@/contexts/MarketContext";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { Badge } from "@/components/ui/badge";
+import { ArrowUp, ArrowDown, TrendingUp, TrendingDown } from "lucide-react";
 
 const MarketPricesList: React.FC = () => {
-  const { filteredData, region } = useMarket();
+  const { filteredData, region, isLoading } = useMarket();
   const { t } = useLanguage();
 
   const isRegionSpecific = region !== "all";
@@ -19,7 +21,11 @@ const MarketPricesList: React.FC = () => {
       <div className="md:hidden">
         <Card className="shadow-sm">
           <CardContent className="space-y-4 pt-4">
-            {filteredData.length > 0 ? (
+            {isLoading ? (
+              <div className="text-center py-6 text-muted-foreground">
+                {t("loading") || "Loading market prices..."}
+              </div>
+            ) : filteredData.length > 0 ? (
               filteredData.map((item, index) => (
                 <MarketPriceCard
                   key={index}
@@ -28,6 +34,7 @@ const MarketPricesList: React.FC = () => {
                   unit={item.unit}
                   change={item.change}
                   region={item.region}
+                  isRealTime={true}
                 />
               ))
             ) : (
@@ -53,17 +60,53 @@ const MarketPricesList: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.length > 0 ? (
-                  filteredData.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell className="font-medium">{item.crop}</TableCell>
-                      <TableCell>GH₵{item.price.toFixed(2)}/{item.unit}</TableCell>
-                      {!isRegionSpecific && <TableCell>{item.region}</TableCell>}
-                      <TableCell className={`text-right ${item.change > 0 ? 'text-farm-green' : 'text-destructive'}`}>
-                        {item.change > 0 ? '+' : ''}{item.change?.toFixed(2)}%
-                      </TableCell>
-                    </TableRow>
-                  ))
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={isRegionSpecific ? 3 : 4} className="text-center py-6 text-muted-foreground">
+                      {t("loading") || "Loading market prices..."}
+                    </TableCell>
+                  </TableRow>
+                ) : filteredData.length > 0 ? (
+                  filteredData.map((item, index) => {
+                    const changeAbs = Math.abs(item.change);
+                    const isPositive = item.change > 0;
+                    return (
+                      <TableRow key={index} className="hover:bg-muted/50">
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {item.crop}
+                            <Badge variant="secondary" className="text-xs bg-farm-green/10 text-farm-green border-farm-green/20">
+                              Live
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold text-farm-sky">
+                          GH₵{item.price.toFixed(2)}/{item.unit}
+                        </TableCell>
+                        {!isRegionSpecific && <TableCell>{item.region}</TableCell>}
+                        <TableCell className={`text-right font-medium ${isPositive ? 'text-farm-green' : 'text-destructive'}`}>
+                          <div className="flex items-center justify-end gap-1">
+                            {changeAbs > 0.5 ? (
+                              isPositive ? (
+                                <TrendingUp size={14} />
+                              ) : (
+                                <TrendingDown size={14} />
+                              )
+                            ) : (
+                              isPositive ? (
+                                <ArrowUp size={14} />
+                              ) : (
+                                <ArrowDown size={14} />
+                              )
+                            )}
+                            <span>
+                              {isPositive ? '+' : ''}{item.change?.toFixed(1)}%
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow>
                     <TableCell colSpan={isRegionSpecific ? 3 : 4} className="text-center py-6 text-muted-foreground">

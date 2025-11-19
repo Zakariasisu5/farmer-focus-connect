@@ -1,8 +1,19 @@
 
 import React, { useState, useEffect } from "react";
-import { Phone, Mail, MapPin, MessageCircle, User } from "lucide-react";
+import { Phone, Mail, MapPin, MessageCircle, User, Trash2 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -37,6 +48,8 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
   const navigate = useNavigate();
   const [showContact, setShowContact] = useState(false);
   const [isStartingChat, setIsStartingChat] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [posterName, setPosterName] = useState<string>("");
   
   const isOwner = user?.id === listing.user_id;
@@ -108,6 +121,67 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
       console.error("Error starting chat:", error);
       toast.error(t("errorStartingChat"));
       setIsStartingChat(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!isOwner) {
+      toast.error(t("unauthorized") || "You can only delete your own listings");
+      setShowDeleteDialog(false);
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+
+      // Delete image from storage if it exists
+      if (listing.image_url) {
+        try {
+          // Extract the file path from the URL
+          // URL format: https://[project].supabase.co/storage/v1/object/public/product-images/[path]
+          const urlParts = listing.image_url.split('/product-images/');
+          if (urlParts.length > 1) {
+            const filePath = urlParts[1];
+            const { error: storageError } = await supabase.storage
+              .from('product-images')
+              .remove([filePath]);
+
+            if (storageError) {
+              console.warn("Error deleting image from storage:", storageError);
+              // Continue with listing deletion even if image deletion fails
+            }
+          }
+        } catch (storageError) {
+          console.warn("Error deleting image:", storageError);
+          // Continue with listing deletion
+        }
+      }
+
+      // Delete the listing from database
+      const { error: deleteError } = await supabase
+        .from('crop_listings')
+        .delete()
+        .eq('id', listing.id);
+
+      if (deleteError) {
+        console.error("Error deleting listing:", deleteError);
+        throw deleteError;
+      }
+
+      toast.success(t("listingDeleted") || "Listing deleted successfully");
+      
+      // Close dialog
+      setShowDeleteDialog(false);
+      
+      // Refresh the listings
+      if (onUpdate) {
+        onUpdate();
+      }
+    } catch (error) {
+      console.error("Error deleting listing:", error);
+      toast.error(t("errorDeletingListing") || "Failed to delete listing");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -200,9 +274,41 @@ const CropListingCard: React.FC<CropListingCardProps> = ({ listing, onUpdate }) 
             </Button>
           </div>
         ) : (
-          <Button variant="secondary" className="w-full" disabled>
-            {t("yourListing")}
-          </Button>
+          <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <AlertDialogTrigger asChild>
+              <Button 
+                variant="destructive" 
+                className="w-full"
+                disabled={isDeleting}
+              >
+                <Trash2 size={16} className="mr-1" />
+                {t("deleteListing") || "Delete Listing"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("confirmDelete") || "Delete Listing?"}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("confirmDeleteMessage") || `Are you sure you want to delete "${listing.crop_name}"? This action cannot be undone.`}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={isDeleting}>
+                  {t("cancel") || "Cancel"}
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleDelete();
+                  }}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (t("deleting") || "Deleting...") : (t("delete") || "Delete")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </CardFooter>
     </Card>

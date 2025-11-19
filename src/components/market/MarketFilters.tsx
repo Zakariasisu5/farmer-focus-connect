@@ -61,15 +61,18 @@ const MarketFilters: React.FC = () => {
         </span>
         
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            {t("lastUpdated")}: {lastUpdated.toLocaleTimeString()}
-          </span>
+          {!isLoading && (
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              {t("lastUpdated")}: {lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
           <Button 
             variant="outline" 
             size="icon" 
             onClick={refreshPrices}
             disabled={isLoading}
             className="shrink-0 h-8 w-8"
+            title={t("refreshPrices") || "Refresh prices"}
           >
             <RefreshCw size={16} className={`${isLoading ? "animate-spin" : ""}`} />
           </Button>
